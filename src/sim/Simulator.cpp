@@ -523,6 +523,7 @@ SimulationResult Simulator::run() {
       std::chrono::duration<double>(wall_end - wall_start).count();
 
   m.simulated_time = time;
+  m.metrics_window_s = std::max(0.0, m.simulated_time - settle_time);
   m.rms_cross_track = acc_cross.rms();
   m.max_cross_track = acc_cross.peak;
   m.rms_altitude_error = acc_alt.rms();
@@ -568,6 +569,7 @@ void writeMetricsJson(const std::string& path, const SimulationResult& result,
   f << "  \"completed\": " << (m.completed ? "true" : "false") << ",\n";
   f << "  \"stable\": " << (m.stable ? "true" : "false") << ",\n";
   f << "  \"termination_reason\": \"" << m.termination_reason << "\",\n";
+  f << "  \"metrics_window_s\": " << m.metrics_window_s << ",\n";
   f << "  \"trim\": {\n";
   f << "    \"alpha_deg\": " << result.trim.alpha * constants::kRadToDeg << ",\n";
   f << "    \"theta_deg\": " << result.trim.theta * constants::kRadToDeg << ",\n";

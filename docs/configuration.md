@@ -246,6 +246,12 @@ resulting consistency.
 `max_pitch_deg`, `stop_on_ground_contact`. A violation ends the run and is reported as the
 `termination_reason` in `summary.json`; Monte Carlo counts it as a failure.
 
+A run that ends early may end before the settling window the tracking and estimator
+statistics are measured over — `min(20 s, 0.15 × duration)` — in which case every RMS figure
+in `summary.json` is zero because there were no samples, not because the errors were zero.
+`metrics_window_s` reports how many seconds of data those figures actually cover, so the two
+cases can be told apart; it is zero exactly when there is nothing to report.
+
 ### `monte_carlo`
 
 Read by `aether_mc`; ignored by `aether_sim`.

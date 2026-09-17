@@ -9,6 +9,7 @@
   "completed": true,
   "stable": true,
   "termination_reason": "completed",
+  "metrics_window_s": 279.998,
   "trim": {
     "alpha_deg": 4.578831496,
     "theta_deg": 4.578831434,
@@ -40,8 +41,8 @@
     "min_covariance_eigenvalue": 2.222058436e-06
   },
   "performance": {
-    "wall_clock_s": 4.545669366,
-    "real_time_factor": 65.99644097,
+    "wall_clock_s": 4.59601703,
+    "real_time_factor": 65.27347441,
     "dynamics_evaluations": 1007992,
     "steps": 150000,
     "rejected_steps": 0

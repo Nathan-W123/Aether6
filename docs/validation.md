@@ -10,7 +10,7 @@ make run-scenarios               # the closed-loop regressions
 make monte-carlo                 # the statistical campaign
 ```
 
-Current status: **102 test cases, 33 906 assertions, all passing** (26 s, single-threaded,
+Current status: **103 test cases, 33 916 assertions, all passing** (28 s, single-threaded,
 `Release`, GCC 13.3 on an x86-64 container).
 
 ---

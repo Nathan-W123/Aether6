@@ -117,6 +117,19 @@ handling, all of which a flight-grade filter must deal with.
   protection independent of the course clamp.
 * The guidance layer follows straight-line legs and circular orbits. There is no
   Dubins-path planning, no obstacle avoidance and no altitude-rate optimisation.
+* **The LQR's lateral design model assumes the trim airspeed, not ground speed.** The course
+  row of the lateral `A` matrix is the coordinated-turn kinematics `χ̇ ≈ (g/Va₀)·δφ`,
+  linearised about the trim airspeed `Va₀` (`src/control/LqrAutopilot.cpp`). In light wind
+  that is close enough that the LQR outperforms the PID on both path and altitude tracking.
+  Once the wind is a large fraction of the airspeed the crab angle is large, ground speed and
+  airspeed diverge, and the assumed course-rate gain is wrong: sweeping the dashboard's wind
+  slider shows the LQR's cross-track RMS growing faster than the PID's above roughly 8 m/s of
+  wind at 25 m/s airspeed (see `docs/dashboard.md`), while its altitude tracking stays two to
+  three times better throughout. The design model would have to be re-derived about ground
+  speed — and the Monte-Carlo campaign re-run — to remove this.
+* The autopilots have no wind-aware guidance: cross-track control corrects the resulting
+  error rather than anticipating the drift, so a steady crosswind is rejected by the
+  integrator rather than by a feed-forward crab angle.
 
 ## 9. Turbulence model
 

@@ -1,0 +1,30 @@
+# Keep the build context small and deterministic: everything the image needs is copied
+# explicitly in the Dockerfile.
+.git
+.github
+.gitignore
+build/
+**/node_modules/
+web/frontend/dist/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+**/.pytest_cache/
+.venv/
+venv/
+python/
+docs/
+tests/
+scripts/
+Makefile
+*.md
+
+# Reference results: only the Monte-Carlo and linear-analysis files the service serves are
+# copied in, and those are named explicitly in the Dockerfile.
+results/nominal/
+results/nominal_pid/
+results/ideal/
+results/wind/
+results/integrators/
+results/figures/
+results/monte_carlo/trajectories.csv

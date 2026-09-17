@@ -421,6 +421,49 @@ TEST_CASE("closed-loop regression: both controllers fly the nominal course",
     REQUIRE(r.metrics.max_bank < 50.0 * constants::kDegToRad);
     REQUIRE(r.metrics.max_alpha < 20.0 * constants::kDegToRad);
     REQUIRE(r.final_state.allFinite());
+    // The statistics above must be backed by a real sample window, not by an empty one.
+    REQUIRE(r.metrics.metrics_window_s > 0.8 * c.duration);
+  }
+}
+
+TEST_CASE("a run that ends before the settling window reports an empty metric window",
+          "[control][metrics]") {
+  // The tracking and estimator statistics only start accumulating after a settling window,
+  // so a run cut short before it opens has no samples and every RMS reads zero. Without
+  // metrics_window_s a reader cannot tell that from perfect tracking, so the run must say
+  // so explicitly.
+  const std::string scenario = std::string(AETHER_CONFIG_DIR) + "/scenarios/ideal.yaml";
+  sim::ScenarioConfig cfg = sim::loadScenario(scenario);
+  cfg.logging.enabled = false;
+  cfg.duration = 200.0;  // settling window is min(20, 0.15 * duration) = 20 s
+  const auto aircraft = sim::loadAircraft(cfg.aircraft_file);
+
+  SECTION("aborted before the settling window opens") {
+    // A safety floor above the trim airspeed trips at once, which is the shape of a real
+    // departure in strong wind: several seconds of flight, then a stop, and no samples.
+    sim::ScenarioConfig c = cfg;
+    c.safety.min_airspeed = 26.0;  // trim is 25 m/s
+    sim::Simulator simulator(c, aircraft);
+    const sim::SimulationResult r = simulator.run();
+    INFO(r.metrics.termination_reason << " at " << r.metrics.simulated_time << " s");
+
+    REQUIRE_FALSE(r.metrics.completed);
+    REQUIRE(r.metrics.simulated_time < 20.0);
+    REQUIRE(r.metrics.metrics_window_s == Approx(0.0).margin(1e-9));
+    // Every statistic is zero for want of samples; metrics_window_s is what says so.
+    REQUIRE(r.metrics.rms_cross_track == Approx(0.0).margin(1e-12));
+    REQUIRE(r.metrics.rms_altitude_error == Approx(0.0).margin(1e-12));
+    REQUIRE(r.metrics.rmse_position == Approx(0.0).margin(1e-12));
+  }
+
+  SECTION("run long enough to accumulate") {
+    sim::ScenarioConfig c = cfg;
+    c.duration = 60.0;
+    sim::Simulator simulator(c, aircraft);
+    const sim::SimulationResult r = simulator.run();
+    // min(20, 0.15 * 60) = 9 s of settling, so 51 s of samples.
+    REQUIRE(r.metrics.metrics_window_s == Approx(51.0).margin(c.integration.dt * 4));
+    REQUIRE(r.metrics.rmse_position > 0.0);
   }
 }
 

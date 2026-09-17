@@ -10,6 +10,11 @@
 #   make integrators   run the integrator accuracy/cost study
 #   make figures       generate every figure (including the animated GIF)
 #   make run-all       everything above, in order
+#
+#   make dashboard     build the frontend and serve the whole dashboard on :8000
+#   make dashboard-dev run the API and the Vite dev server together (hot reload)
+#   make dashboard-test run the FastAPI service's test suite
+#
 #   make clean         remove the build directory
 #   make clean-results remove generated results (keeps the committed figures)
 # =============================================================================================
@@ -24,13 +29,18 @@ CMAKE_ARGS     ?=
 
 BIN            := $(BUILD_DIR)/bin
 
+FRONTEND_DIR   := web/frontend
+BACKEND_DIR    := web/backend
+DASHBOARD_PORT ?= 8000
+
 .PHONY: all configure build test ctest run run-scenarios trim monte-carlo integrators \
-        figures run-all clean clean-results help
+        figures run-all clean clean-results help \
+        dashboard dashboard-build dashboard-dev dashboard-test
 
 all: build
 
 help:
-	@sed -n '4,15p' Makefile
+	@sed -n '4,20p' Makefile
 
 configure:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) $(CMAKE_ARGS)
@@ -71,8 +81,30 @@ run-all: build test trim run-scenarios integrators monte-carlo figures
 	@echo
 	@echo "All artefacts are under results/ (figures in results/figures/)."
 
+# ---------------------------------------------------------------------------------------
+# Web dashboard. The service runs the compiled binaries, so `build` is a real prerequisite.
+# ---------------------------------------------------------------------------------------
+$(FRONTEND_DIR)/node_modules: $(FRONTEND_DIR)/package-lock.json
+	cd $(FRONTEND_DIR) && npm ci --no-audit --no-fund
+	@touch $@
+
+dashboard-build: $(FRONTEND_DIR)/node_modules
+	cd $(FRONTEND_DIR) && npm run build
+
+dashboard: build dashboard-build
+	PORT=$(DASHBOARD_PORT) PYTHONPATH=$(BACKEND_DIR) \
+	  $(PYTHON) -m uvicorn app.main:app --host 0.0.0.0 --port $(DASHBOARD_PORT)
+
+# Two processes: uvicorn with reload on :8000 and Vite on :5173, which proxies /api to it.
+dashboard-dev: build $(FRONTEND_DIR)/node_modules
+	PYTHONPATH=$(BACKEND_DIR) $(PYTHON) -m uvicorn app.main:app --reload --port 8000 & \
+	  cd $(FRONTEND_DIR) && npm run dev; kill %1
+
+dashboard-test: build
+	cd $(BACKEND_DIR) && $(PYTHON) -m pytest -q
+
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(FRONTEND_DIR)/dist
 
 clean-results:
 	rm -rf results/nominal results/nominal_pid results/ideal results/wind \

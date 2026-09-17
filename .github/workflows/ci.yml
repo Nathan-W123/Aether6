@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
   build-and-test:
     name: ${{ matrix.compiler }} / ${{ matrix.build_type }}
     runs-on: ubuntu-24.04
@@ -108,3 +109,68 @@ jobs:
             results/monte_carlo/trials.csv
           if-no-files-found: error
           retention-days: 14
+  dashboard:
+    name: dashboard (service + frontend)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build libeigen3-dev libyaml-cpp-dev
+
+      # The service runs the real binaries, so its tests need them built first.
+      - name: Build the simulator
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAETHER_BUILD_TESTS=OFF
+          cmake --build build -j "$(nproc)"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the service
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -r web/backend/requirements.txt pytest httpx
+
+      - name: Service tests
+        working-directory: web/backend
+        run: python -m pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+
+      - name: Install the frontend
+        working-directory: web/frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check and build the frontend
+        working-directory: web/frontend
+        run: npm run build
+
+      # A smoke test of the deployed shape: the built bundle served by the real service,
+      # answering the health check Railway polls and a full simulation request.
+      - name: End-to-end smoke test
+        run: |
+          AETHER_STATIC_DIR="$PWD/web/frontend/dist" PYTHONPATH="$PWD/web/backend" \
+            python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --log-level warning &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/health | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -sf http://127.0.0.1:8000/ | grep -q '<div id="root">'
+          curl -sf -X POST http://127.0.0.1:8000/api/simulate \
+            -H 'content-type: application/json' \
+            -d '{"controller":"lqr","wind_speed":6,"seed":1}' \
+          | python -c "import json,sys; d=json.load(sys.stdin); assert d['metrics']['completed'], d['metrics']; print('completed', d['metrics']['laps_completed'], 'laps')"
+          # No -f here: the point of this call is that the server *rejects* it with a 422.
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8000/api/simulate \
+            -H 'content-type: application/json' -d '{"airspeed":99}')
+          test "$code" = "422" || { echo "expected 422, got $code"; exit 1; }

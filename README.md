@@ -4,7 +4,7 @@
 simulator.** Nonlinear rigid-body flight physics, trim and linearisation, PID and LQR
 autopilots, waypoint guidance, simulated multi-rate avionics, an 18-state error-state EKF,
 atmospheric turbulence, and a deterministic Monte-Carlo campaign — in modern C++17 with a
-Python analysis layer.
+Python analysis layer and an interactive web dashboard.
 
 ![Animated flight](results/figures/flight.gif)
 
@@ -48,7 +48,7 @@ physically cannot reach into a quantity a real autopilot would not have.
 | **Sensors** | Independently scheduled IMU, GNSS, barometer, magnetometer and pitot with white noise, bias, bias random walk and correlated GNSS error; scriptable GNSS outage |
 | **Navigation** | 18-state error-state EKF: position, velocity, attitude, gyro and accel bias, **horizontal wind**, **barometer bias**; Joseph-form updates, attitude-error reset Jacobian, chi-squared gating |
 | **Uncertainty** | Deterministic multi-threaded Monte Carlo over vehicle, aerodynamic, environmental, initial-condition and sensor dispersions |
-| **Verification** | 102 Catch2 test cases / 33 906 assertions covering identities, conservation, convergence order, trim residuals, linearisation consistency, covariance health, closed-loop regression and determinism |
+| **Verification** | 103 Catch2 test cases / 33 916 assertions covering identities, conservation, convergence order, trim residuals, linearisation consistency, covariance health, closed-loop regression and determinism |
 | **Analysis** | Python package with loaders, a validated colour-blind-safe palette, 15 figure generators and a 3-D attitude animation |
 
 ---
@@ -80,7 +80,7 @@ or step by step:
 
 ```bash
 make build          # configure + compile (Release)
-make test           # 102 test cases, 33 906 assertions  (~26 s)
+make test           # 103 test cases, 33 916 assertions  (~28 s)
 make trim           # trim, linearise, print the modes, export the model + airspeed sweep
 make run            # the nominal 300 s closed-loop mission  (~4.4 s)
 make run-scenarios  # nominal + ideal + PID + strong-wind
@@ -109,6 +109,36 @@ All four applications accept `--help`. `aether_sim` exits 0 on a completed run, 
 safety limit was tripped and 2 on a configuration error, so it composes with shell scripting.
 
 ---
+
+## Interactive dashboard
+
+A single-page dashboard runs the real simulator on demand: pick a scenario or move the
+sliders, press run, and the page shows the flown trajectory in 3D, the ground track, the
+aircraft states and control inputs, truth against the EKF's estimate, an LQR-versus-PID
+comparison and the Monte-Carlo robustness results.
+
+```bash
+make build        # the C++ simulator
+make dashboard    # builds the frontend, then serves everything on http://localhost:8000
+```
+
+It is one FastAPI process serving a built React bundle and executing `aether_sim` and
+`aether_mc` per request, packaged as a single multi-stage container:
+
+```
+React + Vite (TypeScript) ──POST──▶ FastAPI ──exec──▶ aether_sim / aether_mc
+                          ◀─JSON──          ◀─CSV───
+```
+
+Everything a visitor can change is a bounded number or an enum; the service generates the
+scenario YAML itself, runs each simulation in a fresh temporary directory under a wall-clock
+limit and a concurrency cap, deletes it afterwards and caches identical requests. The
+published 256-trial Monte-Carlo campaign and the modal analysis are served from committed
+results — a visitor may launch a 8–16 trial campaign, not a 256-trial one.
+
+See [`docs/dashboard.md`](docs/dashboard.md) for the controls, the API, the security model
+and the deployment. `Dockerfile` and `railway.json` deploy it as one Railway service that
+listens on the injected `$PORT` and answers a health check at `/health`.
 
 ## Results
 
@@ -216,8 +246,12 @@ apps/             aether_sim, aether_trim, aether_mc, aether_integrators
 tests/            Catch2 suite, one file per subsystem
 configs/          airframe and scenario YAML
 python/           aether_viz package + make_figures.py / animate.py
+web/backend/      FastAPI service: validation, scenario generation, sandboxed execution
+web/frontend/     React + Vite dashboard: 3D trajectory, SVG charts, control panel
 results/          generated output; figures and summaries committed, bulk logs not
 docs/             the documentation set below
+Dockerfile        three-stage build: C++ binaries, frontend bundle, Python runtime
+railway.json      deployment: Dockerfile builder, /health check
 ```
 
 ## Documentation
@@ -229,6 +263,7 @@ docs/             the documentation set below
 | [`docs/configuration.md`](docs/configuration.md) | Every YAML key with its default, units and meaning; command-line overrides; the shipped scenarios |
 | [`docs/validation.md`](docs/validation.md) | What each test checks and why, with the achieved numbers; measured estimator consistency; the Monte-Carlo findings |
 | [`docs/benchmarks.md`](docs/benchmarks.md) | Measured runtimes, convergence tables, modal characteristics, mission performance, campaign statistics |
+| [`docs/dashboard.md`](docs/dashboard.md) | The web dashboard: what the controls change, the API, the security model, the container and the deployment |
 | [`docs/limitations.md`](docs/limitations.md) | What is approximated, what it costs, and what it would take to remove |
 
 ---

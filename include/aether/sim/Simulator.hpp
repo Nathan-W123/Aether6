@@ -29,6 +29,12 @@ struct SimulationMetrics {
   bool stable = false;                ///< True if no safety limit was violated
   std::string termination_reason;     ///< "completed", "ground_contact", "airspeed_low", ...
 
+  /// Seconds of data the tracking and estimator statistics below were computed over, i.e.
+  /// the simulated time after the settling window. Zero means a run that ended before the
+  /// window opened, in which case every RMS figure below is zero for want of samples rather
+  /// than because the errors were zero.
+  double metrics_window_s = 0.0;
+
   // Guidance / tracking (evaluated after a short settling window).
   double rms_cross_track = 0.0;       ///< RMS lateral path deviation [m]
   double max_cross_track = 0.0;       ///< Peak lateral path deviation [m]

@@ -31,6 +31,17 @@ venv/
 .ipynb_checkpoints/
 
 # ---------------------------------------------------------------------------------------
+# Web dashboard
+#
+# The lockfile is committed so `npm ci` and the Docker build are reproducible; the installed
+# tree and the built bundle are not. `make dashboard` regenerates both.
+# ---------------------------------------------------------------------------------------
+node_modules/
+web/frontend/dist/
+.pytest_cache/
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------------------
 # Editors and OS
 # ---------------------------------------------------------------------------------------
 .vscode/
