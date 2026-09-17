@@ -202,16 +202,18 @@ export default function App() {
                     returns the series you see. No text you type reaches a shell, a filename or a
                     configuration file.
                   </p>
-                  <table className="data">
-                    <tbody>
-                      <tr><td>Simulated duration</td><td>{meta.limits.duration_s.toFixed(0)} s</td></tr>
-                      <tr><td>Integrator step</td><td>{(meta.limits.dt_s * 1000).toFixed(0)} ms (RK4)</td></tr>
-                      <tr><td>Control rate</td><td>100 Hz</td></tr>
-                      <tr><td>Samples returned</td><td>{meta.limits.series_points}</td></tr>
-                      <tr><td>Concurrent runs allowed</td><td>{meta.limits.max_concurrency}</td></tr>
-                      <tr><td>Run time limit</td><td>{meta.limits.simulate_timeout_s.toFixed(0)} s</td></tr>
-                    </tbody>
-                  </table>
+                  <div className="table-scroll">
+                    <table className="data">
+                      <tbody>
+                        <tr><td>Simulated duration</td><td>{meta.limits.duration_s.toFixed(0)} s</td></tr>
+                        <tr><td>Integrator step</td><td>{(meta.limits.dt_s * 1000).toFixed(0)} ms (RK4)</td></tr>
+                        <tr><td>Control rate</td><td>100 Hz</td></tr>
+                        <tr><td>Samples returned</td><td>{meta.limits.series_points}</td></tr>
+                        <tr><td>Concurrent runs allowed</td><td>{meta.limits.max_concurrency}</td></tr>
+                        <tr><td>Run time limit</td><td>{meta.limits.simulate_timeout_s.toFixed(0)} s</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 

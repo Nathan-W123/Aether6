@@ -106,38 +106,40 @@ export function ComparePanel({ request, seeded }: Props) {
               ]}
             />
           </div>
-          <table className="data" style={{ marginTop: 14 }}>
-            <thead>
-              <tr>
-                <th>metric</th>
-                <th><span style={{ color: SEMANTIC.lqr }}>LQR</span></th>
-                <th><span style={{ color: SEMANTIC.pid }}>PID</span></th>
-                <th>difference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ROWS.map((row) => {
-                const a = lqr!.metrics[row.key] as number
-                const b = pid!.metrics[row.key] as number
-                const delta = b === 0 ? 0 : ((a - b) / Math.abs(b)) * 100
-                const better = row.lowerIsBetter ? a < b : a > b
-                return (
-                  <tr key={row.key}>
-                    <td>{row.label}</td>
-                    <td style={{ color: better ? 'var(--good)' : undefined }}>
-                      {fixed(a, row.decimals)} {row.unit}
-                    </td>
-                    <td style={{ color: !better ? 'var(--good)' : undefined }}>
-                      {fixed(b, row.decimals)} {row.unit}
-                    </td>
-                    <td style={{ color: 'var(--text-muted)' }}>
-                      {delta >= 0 ? '+' : ''}{delta.toFixed(0)}%
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="data" style={{ marginTop: 14 }}>
+              <thead>
+                <tr>
+                  <th>metric</th>
+                  <th><span style={{ color: SEMANTIC.lqr }}>LQR</span></th>
+                  <th><span style={{ color: SEMANTIC.pid }}>PID</span></th>
+                  <th>difference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ROWS.map((row) => {
+                  const a = lqr!.metrics[row.key] as number
+                  const b = pid!.metrics[row.key] as number
+                  const delta = b === 0 ? 0 : ((a - b) / Math.abs(b)) * 100
+                  const better = row.lowerIsBetter ? a < b : a > b
+                  return (
+                    <tr key={row.key}>
+                      <td>{row.label}</td>
+                      <td style={{ color: better ? 'var(--good)' : undefined }}>
+                        {fixed(a, row.decimals)} {row.unit}
+                      </td>
+                      <td style={{ color: !better ? 'var(--good)' : undefined }}>
+                        {fixed(b, row.decimals)} {row.unit}
+                      </td>
+                      <td style={{ color: 'var(--text-muted)' }}>
+                        {delta >= 0 ? '+' : ''}{delta.toFixed(0)}%
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </>
       ) : (
         <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '8px 0 0' }}>

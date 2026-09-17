@@ -28,20 +28,22 @@ export function TrimPanel({ trim, request, serverRuntime, cached }: Props) {
         {fixed(request.target_altitude, 0)} m, with one-sided penalties keeping the answer
         inside the actuator box.
       </p>
-      <table className="data">
-        <tbody>
-          <tr><td>Angle of attack α</td><td>{fixed(trim.alpha_deg, 3)}°</td></tr>
-          <tr><td>Pitch attitude θ</td><td>{fixed(trim.theta_deg, 3)}°</td></tr>
-          <tr><td>Elevator</td><td>{fixed(trim.elevator_deg, 3)}°</td></tr>
-          <tr><td>Throttle</td><td>{fixed(trim.throttle, 4)}</td></tr>
-          <tr>
-            <td>Residual ‖f(x,u)‖<sub>∞</sub></td>
-            <td style={{ color: trim.residual_inf_norm < 1e-8 ? 'var(--good)' : 'var(--warn)' }}>
-              {science(trim.residual_inf_norm)}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div className="table-scroll">
+        <table className="data">
+          <tbody>
+            <tr><td>Angle of attack α</td><td>{fixed(trim.alpha_deg, 3)}°</td></tr>
+            <tr><td>Pitch attitude θ</td><td>{fixed(trim.theta_deg, 3)}°</td></tr>
+            <tr><td>Elevator</td><td>{fixed(trim.elevator_deg, 3)}°</td></tr>
+            <tr><td>Throttle</td><td>{fixed(trim.throttle, 4)}</td></tr>
+            <tr>
+              <td>Residual ‖f(x,u)‖<sub>∞</sub></td>
+              <td style={{ color: trim.residual_inf_norm < 1e-8 ? 'var(--good)' : 'var(--warn)' }}>
+                {science(trim.residual_inf_norm)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

@@ -94,6 +94,12 @@ code, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
 .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }
 
+/* Charts size themselves from their container's measured width. A grid or flex child
+   defaults to a min-width of auto, so a chart that is briefly too wide makes its own track
+   grow, which makes the chart measure wide again — a latch that never shrinks back. */
+.grid-2 > *, .grid-3 > *, .stack > * { min-width: 0; }
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); }
+
 @media (max-width: 1080px) {
   .grid-2, .grid-3 { grid-template-columns: minmax(0, 1fr); }
 }
@@ -270,6 +276,9 @@ input[type='range']:disabled { opacity: 0.45; cursor: not-allowed; }
 .tile .tile-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
 
 /* --- tables ------------------------------------------------------------------------ */
+/* Wide tables scroll inside their own container rather than widening the page. */
+.table-scroll { overflow-x: auto; max-width: 100%; }
+
 table.data {
   width: 100%;
   border-collapse: collapse;

@@ -124,26 +124,28 @@ export function MonteCarloPanel({ meta, campaign, request }: Props) {
       <div className="grid-2" style={{ marginTop: 16, alignItems: 'start' }}>
         <div>
           <h3 style={{ fontSize: 13, marginBottom: 8 }}>Published campaign</h3>
-          <table className="data">
-            <thead>
-              <tr><th>metric</th><th>mean</th><th>p50</th><th>p95</th><th>max</th></tr>
-            </thead>
-            <tbody>
-              {campaign.statistics
-                .filter((s) => ['rms_cross_track', 'max_cross_track', 'rms_altitude_error',
-                  'estimator_position_rmse', 'estimator_attitude_rmse', 'max_bank']
-                  .includes(s.name))
-                .map((s) => (
-                  <tr key={s.name}>
-                    <td>{humanise(s.name)} [{s.unit}]</td>
-                    <td>{fixed(s.mean, 2)}</td>
-                    <td>{fixed(s.median, 2)}</td>
-                    <td>{fixed(s.p95, 2)}</td>
-                    <td>{fixed(s.max, 2)}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr><th>metric</th><th>mean</th><th>p50</th><th>p95</th><th>max</th></tr>
+              </thead>
+              <tbody>
+                {campaign.statistics
+                  .filter((s) => ['rms_cross_track', 'max_cross_track', 'rms_altitude_error',
+                    'estimator_position_rmse', 'estimator_attitude_rmse', 'max_bank']
+                    .includes(s.name))
+                  .map((s) => (
+                    <tr key={s.name}>
+                      <td>{humanise(s.name)} [{s.unit}]</td>
+                      <td>{fixed(s.mean, 2)}</td>
+                      <td>{fixed(s.median, 2)}</td>
+                      <td>{fixed(s.p95, 2)}</td>
+                      <td>{fixed(s.max, 2)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
           {Object.keys(campaign.failure_reasons).length > 0 && (
             <p className="panel-note" style={{ marginTop: 10, marginBottom: 0 }}>
               Failures:{' '}
@@ -184,26 +186,28 @@ export function MonteCarloPanel({ meta, campaign, request }: Props) {
           </p>
           {error && <div className="status error" role="alert">{error}</div>}
           {live && (
-            <table className="data" style={{ marginTop: 6 }}>
-              <tbody>
-                <tr>
-                  <td>Completed</td>
-                  <td>{live.successes} / {live.trials}</td>
-                </tr>
-                <tr>
-                  <td>Cross-track RMS, median</td>
-                  <td>{fixed(liveStat?.median, 2)} m</td>
-                </tr>
-                <tr>
-                  <td>Cross-track RMS, worst</td>
-                  <td>{fixed(liveStat?.max, 2)} m</td>
-                </tr>
-                <tr>
-                  <td>Server time</td>
-                  <td>{seconds(live.server_runtime_s)}{live.cached ? ' (cached)' : ''}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="data" style={{ marginTop: 6 }}>
+                <tbody>
+                  <tr>
+                    <td>Completed</td>
+                    <td>{live.successes} / {live.trials}</td>
+                  </tr>
+                  <tr>
+                    <td>Cross-track RMS, median</td>
+                    <td>{fixed(liveStat?.median, 2)} m</td>
+                  </tr>
+                  <tr>
+                    <td>Cross-track RMS, worst</td>
+                    <td>{fixed(liveStat?.max, 2)} m</td>
+                  </tr>
+                  <tr>
+                    <td>Server time</td>
+                    <td>{seconds(live.server_runtime_s)}{live.cached ? ' (cached)' : ''}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

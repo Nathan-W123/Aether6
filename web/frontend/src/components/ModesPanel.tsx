@@ -135,7 +135,7 @@ export function ModesPanel({ data }: { data: PrecomputedModes }) {
         divergent spiral that real airframes of this class also have.
       </p>
       <div className="grid-2" style={{ alignItems: 'start' }}>
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div className="stack" style={{ gap: 14 }}>
           <PolePlot modes={data.modes} colourOf={colourFor}
                     caption="All modes. The shaded half-plane is unstable." />
           {slow.length > 0 && (
@@ -145,37 +145,39 @@ export function ModesPanel({ data }: { data: PrecomputedModes }) {
         </div>
 
         <div>
-          <table className="data">
-            <thead>
-              <tr>
-                <th>mode</th>
-                <th>ω<sub>n</sub> [rad/s]</th>
-                <th>ζ</th>
-                <th>period [s]</th>
-                <th>t½ [s]</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.modes.map((mode) => (
-                <tr key={mode.mode}>
-                  <td>
-                    <span style={{
-                      display: 'inline-block', width: 9, height: 3, borderRadius: 2,
-                      background: colourFor(mode), marginRight: 7, verticalAlign: 'middle',
-                    }} />
-                    {humanise(mode.mode)}
-                    {!mode.stable && (
-                      <span className="badge warn" style={{ marginLeft: 8 }}>divergent</span>
-                    )}
-                  </td>
-                  <td>{fixed(mode.natural_frequency_rad_s, 3)}</td>
-                  <td>{fixed(mode.damping_ratio, 3)}</td>
-                  <td>{mode.period_s > 0 ? fixed(mode.period_s, 2) : '—'}</td>
-                  <td>{mode.time_to_half_s !== 0 ? fixed(Math.abs(mode.time_to_half_s), 2) : '—'}</td>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>mode</th>
+                  <th>ω<sub>n</sub> [rad/s]</th>
+                  <th>ζ</th>
+                  <th>period [s]</th>
+                  <th>t½ [s]</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.modes.map((mode) => (
+                  <tr key={mode.mode}>
+                    <td>
+                      <span style={{
+                        display: 'inline-block', width: 9, height: 3, borderRadius: 2,
+                        background: colourFor(mode), marginRight: 7, verticalAlign: 'middle',
+                      }} />
+                      {humanise(mode.mode)}
+                      {!mode.stable && (
+                        <span className="badge warn" style={{ marginLeft: 8 }}>divergent</span>
+                      )}
+                    </td>
+                    <td>{fixed(mode.natural_frequency_rad_s, 3)}</td>
+                    <td>{fixed(mode.damping_ratio, 3)}</td>
+                    <td>{mode.period_s > 0 ? fixed(mode.period_s, 2) : '—'}</td>
+                    <td>{mode.time_to_half_s !== 0 ? fixed(Math.abs(mode.time_to_half_s), 2) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {spiral && (
             <p className="panel-note" style={{ marginTop: 12, marginBottom: 0 }}>
               The spiral mode's real part is positive, so its "time to half" is really a time to
