@@ -450,8 +450,8 @@ triangle. The filter additionally seeds the wind from the very first airspeed re
 (σ = 2 m) and is otherwise unmodelled. Without a state for it the altitude estimate inherits
 the offset while the covariance keeps shrinking — the filter is confidently wrong — and the
 autopilot then flies to a biased altitude. Adding the state moved the closed-loop altitude
-tracking error from 2.04 m RMS to **1.04 m RMS** and the estimator's vertical position RMSE
-from 1.93 m to **0.83 m**.
+tracking error from 2.04 m RMS to **1.05 m RMS** and the estimator's vertical position RMSE
+from 1.93 m to **0.84 m**.
 
 ---
 

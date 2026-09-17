@@ -48,7 +48,7 @@ physically cannot reach into a quantity a real autopilot would not have.
 | **Sensors** | Independently scheduled IMU, GNSS, barometer, magnetometer and pitot with white noise, bias, bias random walk and correlated GNSS error; scriptable GNSS outage |
 | **Navigation** | 18-state error-state EKF: position, velocity, attitude, gyro and accel bias, **horizontal wind**, **barometer bias**; Joseph-form updates, attitude-error reset Jacobian, chi-squared gating |
 | **Uncertainty** | Deterministic multi-threaded Monte Carlo over vehicle, aerodynamic, environmental, initial-condition and sensor dispersions |
-| **Verification** | 100 Catch2 test cases / 33 898 assertions covering identities, conservation, convergence order, trim residuals, linearisation consistency, covariance health, closed-loop regression and determinism |
+| **Verification** | 102 Catch2 test cases / 33 906 assertions covering identities, conservation, convergence order, trim residuals, linearisation consistency, covariance health, closed-loop regression and determinism |
 | **Analysis** | Python package with loaders, a validated colour-blind-safe palette, 15 figure generators and a 3-D attitude animation |
 
 ---
@@ -73,14 +73,14 @@ python3 -m pip install numpy pandas matplotlib
 
 ```bash
 git clone <this repository> && cd Aether6
-./scripts/run_all.sh          # ~3 min 40 s: build, test, trim, 4 scenarios, MC, all figures
+./scripts/run_all.sh          # ~4 min: build, test, trim, 4 scenarios, MC, all figures
 ```
 
 or step by step:
 
 ```bash
 make build          # configure + compile (Release)
-make test           # 100 test cases, 33 898 assertions  (~26 s)
+make test           # 102 test cases, 33 906 assertions  (~26 s)
 make trim           # trim, linearise, print the modes, export the model + airspeed sweep
 make run            # the nominal 300 s closed-loop mission  (~4.4 s)
 make run-scenarios  # nominal + ideal + PID + strong-wind
@@ -123,8 +123,8 @@ to 150 m and commanded airspeeds from 23 to 27 m/s.
 |---|---|---|---|---|---|
 | `ideal` — truth feedback, still air | **10.25** / 41.2 | **0.61** / 3.7 | 0.61 | 39.2 | 2 |
 | `nominal` — LQR on EKF, 5 m/s wind + turbulence | **11.81** / 48.7 | **1.05** / 5.2 | 0.65 | 40.2 | 2 |
-| `nominal_pid` — PID on EKF, same conditions | **15.08** / 49.5 | **1.90** / 5.2 | 0.64 | 37.0 | 2 |
-| `wind_disturbance` — 10.8 m/s wind (43% of cruise), severe turbulence | **31.33** / 163.9 | **1.14** / 5.3 | 0.86 | 41.2 | 2 |
+| `nominal_pid` — PID on EKF, same conditions | **15.06** / 49.4 | **1.90** / 5.2 | 0.64 | 37.2 | 2 |
+| `wind_disturbance` — 10.8 m/s wind (43% of cruise), severe turbulence | **31.32** / 163.8 | **1.14** / 5.3 | 0.86 | 41.3 | 2 |
 
 Replacing perfect feedback with the EKF costs 1.6 m of cross-track RMS. The LQR beats the PID
 cascade by 22% in cross-track RMS and 45% in altitude RMS on the identical mission and seed.
@@ -150,8 +150,8 @@ appear with realistic values:
 
 ![Estimator detail](results/figures/estimator_detail.png)
 
-Flying closed-loop on its own output, the filter achieves **1.45 m** 3-D position RMSE,
-0.21 m/s velocity RMSE and **1.53°** attitude RMSE, converges the gyro bias to 1.6 mrad/s, and
+Flying closed-loop on its own output, the filter achieves **1.46 m** 3-D position RMSE,
+0.21 m/s velocity RMSE and **1.55°** attitude RMSE, converges the gyro bias to 1.3 mrad/s, and
 recovers the wind vector to about 0.6 m/s — which is what lets the control laws work in
 air-relative quantities instead of mistaking a crosswind crab for a sideslip.
 
@@ -169,10 +169,10 @@ and controller schedule exactly reproducible.
 
 ![Monte Carlo](results/figures/monte_carlo.png)
 
-256 trials × 300 s in 146 s on 4 cores, dispersing mass, inertia, every aerodynamic
+256 trials × 300 s in 160 s on 4 cores, dispersing mass, inertia, every aerodynamic
 derivative, thrust, initial state, wind, turbulence, density and every sensor noise and bias.
-**247 completed, 9 failed (3.5%)**; median cross-track RMS 13.6 m, median estimator position
-RMSE 1.71 m, peak bank 40.3 ± 1.3° across every dispersion.
+**248 completed, 8 failed (3.1%)**; median cross-track RMS 13.6 m, median estimator position
+RMSE 1.71 m, peak bank 40.3 ± 1.2° across every dispersion.
 
 The failures concentrate in the heavy / low-lift-slope / low-density corner — about 25% higher
 effective wing loading — where the mission's 35°-bank turns at a fixed airspeed run out of
@@ -184,7 +184,7 @@ point.
 > angle-of-attack protection that was a hard `max()` override with no rate damping and
 > limit-cycled at the short-period frequency; and an EKF wind estimate starting at zero, which
 > made the reconstructed sideslip wrong by 28° for the first second in a crosswind. The
-> failure rate went 12.1% → 44.5% → 4.7% → 3.5% as each was diagnosed and fixed, and each fix
+> failure rate went 12.1% → 44.5% → 4.7% → 3.1% as each was diagnosed and fixed, and each fix
 > is now covered by a test. `docs/validation.md` §12 tells the story.
 
 ### All generated figures
@@ -263,7 +263,7 @@ dutch roll. The story is in `docs/model.md` §10.
 wind states, a crosswind crab is indistinguishable from a sideslip and the air-relative
 feedback is wrong by tens of degrees. Without a barometer-bias state the altitude estimate
 inherits the unmodelled pressure offset while the covariance keeps shrinking — adding it took
-closed-loop altitude tracking from 2.04 m to **1.04 m** RMS.
+closed-loop altitude tracking from 2.04 m to **1.05 m** RMS.
 
 **Everything is deterministic and seed-reproducible**, including across thread counts. Seeds
 derive from a single master seed through SplitMix64 per subsystem and per Monte-Carlo trial

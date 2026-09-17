@@ -219,6 +219,69 @@ TEST_CASE("sensors fire at their configured rates", "[sensors]") {
   REQUIRE(air == Approx(500).margin(2));
 }
 
+TEST_CASE("sampling rates survive a step that is not a multiple of the period",
+          "[sensors][scheduling]") {
+  // 200 Hz on a 500 Hz frame: the period (5 ms) is not a multiple of the step (2 ms), so a
+  // schedule advanced from the *fire* time would drift to an effective 167 Hz. Advancing from
+  // the scheduled time keeps the average rate exact, with at most one step of jitter.
+  sensors::SensorConfig cfg;
+  cfg.imu.rate = 200.0;
+  cfg.gps.rate = 5.0;
+  cfg.baro.rate = 20.0;
+  cfg.magnetometer.rate = 50.0;
+  cfg.airspeed.rate = 50.0;
+
+  sensors::SensorSuite suite(cfg, 2024);
+  dynamics::DynamicsDiagnostics diag;
+  diag.air.airspeed = 25.0;
+
+  const double dt = 0.002;   // 500 Hz frame
+  const double duration = 20.0;
+  int imu = 0, gps = 0, baro = 0, mag = 0, air = 0;
+  double previous_imu = -1.0, max_gap = 0.0, min_gap = 1e9;
+  for (int i = 0; i < static_cast<int>(duration / dt); ++i) {
+    const double t = i * dt;
+    const auto m = suite.sample(t, dt, sensorState(), diag);
+    if (m.imu_valid) {
+      if (previous_imu >= 0.0) {
+        max_gap = std::max(max_gap, m.imu.time - previous_imu);
+        min_gap = std::min(min_gap, m.imu.time - previous_imu);
+      }
+      previous_imu = m.imu.time;
+    }
+    imu += m.imu_valid;
+    gps += m.gps_valid;
+    baro += m.baro_valid;
+    mag += m.mag_valid;
+    air += m.airspeed_valid;
+  }
+  INFO("imu samples " << imu << " over " << duration << " s");
+  REQUIRE(imu == Approx(duration * cfg.imu.rate).epsilon(0.005));
+  REQUIRE(gps == Approx(duration * cfg.gps.rate).epsilon(0.02));
+  REQUIRE(baro == Approx(duration * cfg.baro.rate).epsilon(0.02));
+  REQUIRE(mag == Approx(duration * cfg.magnetometer.rate).epsilon(0.02));
+  REQUIRE(air == Approx(duration * cfg.airspeed.rate).epsilon(0.02));
+  // Jitter is bounded by one simulation step either side of the nominal period.
+  REQUIRE(min_gap >= 1.0 / cfg.imu.rate - dt - 1e-9);
+  REQUIRE(max_gap <= 1.0 / cfg.imu.rate + dt + 1e-9);
+}
+
+TEST_CASE("a step longer than the sensor period resynchronises the schedule",
+          "[sensors][scheduling]") {
+  // 200 Hz requested but a 100 Hz frame: the sensor can only fire once per step, and the
+  // schedule must not accumulate an unbounded backlog.
+  sensors::SensorConfig cfg;
+  cfg.imu.rate = 200.0;
+  cfg.gps.rate = cfg.baro.rate = cfg.magnetometer.rate = cfg.airspeed.rate = 0.0;
+  sensors::SensorSuite suite(cfg, 5);
+  dynamics::DynamicsDiagnostics diag;
+
+  const double dt = 0.01;
+  int imu = 0;
+  for (int i = 0; i < 1000; ++i) imu += suite.sample(i * dt, dt, sensorState(), diag).imu_valid;
+  REQUIRE(imu == 1000);  // one per step, not a runaway backlog
+}
+
 TEST_CASE("sensor noise and bias have the configured statistics", "[sensors][statistics]") {
   sensors::SensorConfig cfg;
   cfg.imu.rate = 100.0;

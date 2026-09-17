@@ -1,7 +1,7 @@
 # Benchmark results
 
 Every number below was measured by running the code in this repository. Reproduce all of it
-with `./scripts/run_all.sh` (about 3 min 40 s on the machine described here).
+with `./scripts/run_all.sh` (about 3 min 54 s on the machine described here).
 
 **Measurement environment**
 
@@ -19,29 +19,29 @@ with `./scripts/run_all.sh` (about 3 min 40 s on the machine described here).
 | Stage | Wall clock | Notes |
 |---|---|---|
 | Configure + build (4 jobs, cold) | ~35 s | 21 translation units + 10 test files |
-| Unit-test suite | **26 s** | 100 cases, 33 898 assertions (same through CTest) |
+| Unit-test suite | **26 s** | 102 cases, 33 906 assertions (same through CTest) |
 | Trim + linearisation + 19-point airspeed sweep | 0.3 s | |
 | One 300 s closed-loop mission | **4.4 s** | 150 000 frames, RK4 at `dt = 0.002 s` |
 | Integrator study | 1.0 s | |
-| Monte-Carlo campaign, 256 × 300 s | **146.6 s** | 4 threads, 2.27 s mean per trial |
+| Monte-Carlo campaign, 256 × 300 s | **159.9 s** | 4 threads, 2.48 s mean per trial |
 | All 16 figures (incl. the 3.0 MB GIF) | 26 s | the GIF alone is 19 s |
-| **`scripts/run_all.sh` end to end** | **3 min 39 s** | |
+| **`scripts/run_all.sh` end to end** | **3 min 54 s** | |
 
 ### Real-time factor
 
-The nominal scenario runs at **67.6× real time** single-threaded: 300 s of flight in 4.4 s,
+The nominal scenario runs at **65.6× real time** single-threaded: 300 s of flight in 4.6 s,
 covering 1 007 992 right-hand-side evaluations plus 60 000 EKF propagations, 1 500 GNSS
 updates, 6 000 barometer updates and 15 000 magnetometer and pitot updates each.
 
 | Scenario | Wall clock | Real-time factor |
 |---|---|---|
-| `nominal` (LQR, EKF feedback, wind) | 4.44 s | 67.6× |
-| `ideal` (LQR, truth feedback, still air) | 3.90 s | 77.0× |
-| `nominal_pid` (PID, EKF feedback, wind) | 4.43 s | 67.8× |
-| `wind_disturbance` (strong wind, severe turbulence) | 4.49 s | 66.8× |
+| `nominal` (LQR, EKF feedback, wind) | 4.57 s | 65.6× |
+| `ideal` (LQR, truth feedback, still air) | 3.95 s | 75.9× |
+| `nominal_pid` (PID, EKF feedback, wind) | 4.62 s | 64.9× |
+| `wind_disturbance` (strong wind, severe turbulence) | 4.57 s | 65.6× |
 
-The Monte-Carlo trials run at 250 Hz instead of 500 Hz, so a trial costs 2.27 s for 300 s of
-flight (**132× real time**); with 4 threads the campaign throughput is ~1.75 trials/s.
+The Monte-Carlo trials run at 250 Hz instead of 500 Hz, so a trial costs 2.48 s for 300 s of
+flight (**121× real time**); with 4 threads the campaign throughput is ~1.6 trials/s.
 
 ---
 
@@ -155,9 +155,9 @@ Errors are RMS over the run after a 20 s settling window.
 | Scenario | Cross-track RMS / max [m] | Altitude RMS / max [m] | Airspeed RMS [m/s] | Peak bank [°] | Peak α [°] | Laps |
 |---|---|---|---|---|---|---|
 | `ideal` (truth feedback, still air) | **10.25** / 41.2 | **0.61** / 3.7 | 0.61 | 39.2 | 10.3 | 2 |
-| `nominal` (LQR, EKF, 5 m/s wind + turbulence) | **11.81** / 48.7 | **1.05** / 5.2 | 0.65 | 40.2 | 10.5 | 2 |
-| `nominal_pid` (PID, EKF, same conditions) | **15.08** / 49.5 | **1.90** / 5.2 | 0.64 | 37.0 | 10.0 | 2 |
-| `wind_disturbance` (10.8 m/s wind, severe turbulence) | **31.33** / 163.9 | **1.14** / 5.3 | 0.86 | 41.2 | 12.3 | 2 |
+| `nominal` (LQR, EKF, 5 m/s wind + turbulence) | **11.81** / 48.8 | **1.05** / 5.2 | 0.65 | 40.2 | 10.6 | 2 |
+| `nominal_pid` (PID, EKF, same conditions) | **15.06** / 49.4 | **1.90** / 5.2 | 0.64 | 37.2 | 10.0 | 2 |
+| `wind_disturbance` (10.8 m/s wind, severe turbulence) | **31.32** / 163.8 | **1.14** / 5.3 | 0.86 | 41.3 | 12.3 | 2 |
 
 Reading the table:
 
@@ -173,24 +173,24 @@ Reading the table:
   the turn radius grows with groundspeed; altitude and airspeed tracking are essentially
   unaffected. Both laps still complete.
 * **No actuator saturates** in the nominal run (0.00% of samples on every channel), and the
-  35° bank limit is exceeded by 13% of samples with a 40.2° peak — the expected transient
+  35° bank limit is exceeded by 12.9% of samples with a 40.2° peak — the expected transient
   overshoot at the sharpest corner.
 
 ### Estimator accuracy (nominal run)
 
 | Quantity | RMSE |
 |---|---|
-| Position (3-D) | **1.45 m** |
-| Position (horizontal) | 1.18 m |
+| Position (3-D) | **1.46 m** |
+| Position (horizontal) | 1.19 m |
 | Altitude | 0.84 m |
 | Velocity (3-D) | 0.21 m/s |
-| Attitude (rotation angle) | **1.53°** |
-| Yaw | 0.88° |
-| Wind (steady state, `t > 60 s`) | 0.62 / 0.58 m/s (N / E) |
+| Attitude (rotation angle) | **1.55°** |
+| Yaw | 0.92° |
+| Wind (steady state, `t > 60 s`) | 0.64 / 0.59 m/s (N / E) |
 | Sideslip reconstruction | 1.9° RMS |
-| Airspeed | 0.24 m/s RMS |
-| Final gyro-bias error | 1.6 mrad/s |
-| Final accel-bias error | 0.12 m/s² |
+| Airspeed | 0.22 m/s RMS |
+| Final gyro-bias error | 1.3 mrad/s |
+| Final accel-bias error | 0.13 m/s² |
 
 Minimum eigenvalue of the covariance over the whole run: 2.2e-6 — positive throughout.
 
@@ -198,41 +198,41 @@ Minimum eigenvalue of the covariance over the whole run: 2.2e-6 — positive thr
 
 ## 5. Monte-Carlo campaign
 
-256 trials × 300 s, master seed 987654321, 4 threads, **146.6 s** wall clock.
+256 trials × 300 s, master seed 987654321, 4 threads, **159.9 s** wall clock.
 Dispersions: mass ±8%, inertia ±12%, every aerodynamic derivative ±12%, thrust ±8%, initial
 altitude ±10 m, airspeed ±1.5 m/s, attitude ±4-6°, heading ±20°, wind magnitude
 5 ± 3 m/s from a uniformly random direction, turbulence `W₂₀` 7 ± 3.5 m/s, density ±5%, and a
 log-normal ×e^(±0.3) scaling of every sensor noise and bias (all 1-σ).
 
-**Outcome: 247 completed, 9 failed — a 3.5% failure rate** (7 ground contact, 2 airspeed
+**Outcome: 248 completed, 8 failed — a 3.1% failure rate** (7 ground contact, 1 airspeed
 high).
 
 | Metric | Unit | Mean | Std dev | Median | 95th pct | Max |
 |---|---|---|---|---|---|---|
-| RMS cross-track error | m | 14.56 | 4.78 | 13.62 | 25.15 | 45.81 |
-| Peak cross-track error | m | 62.71 | 23.22 | 59.03 | 106.54 | 186.40 |
-| RMS altitude error | m | 1.03 | 0.44 | 0.92 | 1.81 | 4.72 |
-| Peak altitude error | m | 4.33 | 0.71 | 4.29 | 5.63 | 8.22 |
-| RMS airspeed error | m/s | 0.73 | 0.10 | 0.71 | 0.94 | 1.13 |
+| RMS cross-track error | m | 14.57 | 4.79 | 13.61 | 25.13 | 45.67 |
+| Peak cross-track error | m | 62.85 | 23.33 | 58.89 | 109.17 | 186.15 |
+| RMS altitude error | m | 1.03 | 0.44 | 0.92 | 1.80 | 4.72 |
+| Peak altitude error | m | 4.35 | 0.72 | 4.29 | 5.64 | 8.30 |
+| RMS airspeed error | m/s | 0.73 | 0.10 | 0.71 | 0.95 | 1.13 |
 | Estimator position RMSE | m | 1.89 | 0.84 | 1.71 | 3.49 | 6.35 |
-| Estimator velocity RMSE | m/s | 0.245 | 0.091 | 0.239 | 0.406 | 0.576 |
-| Estimator attitude RMSE | deg | 1.60 | 0.54 | 1.52 | 2.48 | 3.25 |
-| Estimator yaw RMSE | deg | 1.14 | 0.43 | 1.13 | 1.89 | 2.63 |
-| Final gyro-bias error | rad/s | 0.0018 | 0.0010 | 0.0016 | 0.0037 | 0.0059 |
-| Final accel-bias error | m/s² | 0.165 | 0.092 | 0.147 | 0.331 | 0.556 |
-| Peak bank angle | deg | 40.33 | 1.26 | 40.14 | 42.75 | 45.43 |
+| Estimator velocity RMSE | m/s | 0.244 | 0.090 | 0.238 | 0.405 | 0.577 |
+| Estimator attitude RMSE | deg | 1.62 | 0.54 | 1.59 | 2.50 | 3.40 |
+| Estimator yaw RMSE | deg | 1.17 | 0.42 | 1.15 | 1.86 | 2.52 |
+| Final gyro-bias error | rad/s | 0.0020 | 0.0011 | 0.0017 | 0.0039 | 0.0059 |
+| Final accel-bias error | m/s² | 0.164 | 0.095 | 0.143 | 0.337 | 0.556 |
+| Peak bank angle | deg | 40.31 | 1.24 | 40.16 | 42.70 | 45.38 |
 | Laps completed | - | 1.98 | 0.14 | 2.00 | 2.00 | 2.00 |
-| Wall clock per trial | s | 2.27 | 0.26 | 2.31 | 2.37 | 2.49 |
+| Wall clock per trial | s | 2.48 | 0.28 | 2.52 | 2.60 | 2.64 |
 
-**Where the failures are.** The failed trials average 14.6 kg against 13.6 kg overall and
-`C_Lα = 4.28` against 5.03 — roughly 25% higher effective wing loading, usually combined with
+**Where the failures are.** The failed trials average 14.4 kg against 13.6 kg overall and
+`C_Lα = 4.24` against 5.01 — roughly 25% higher effective wing loading, usually combined with
 a 6-12% low-density draw. The mission commands 35°-bank turns at a fixed 23-27 m/s, and those
 combinations simply run out of stall margin. That is a vehicle-performance boundary, not a
 controller defect: the envelope protection widens the turns until it cannot, and then the
 aircraft descends. `results/figures/monte_carlo.png` plots the outcome against mass and
 `C_Lα` directly.
 
-**Peak bank is tightly controlled** (40.3 ± 1.3°) across every dispersion, which is the
+**Peak bank is tightly controlled** (40.3 ± 1.2°) across every dispersion, which is the
 gain-derived command limiting working as designed.
 
 ---

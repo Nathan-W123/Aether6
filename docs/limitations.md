@@ -68,7 +68,7 @@ compliant-contact or constraint formulation plus wheel/brake models.
 
 Measured in `docs/validation.md` §10 and visible in `results/figures/estimator_detail.png`.
 Velocity, yaw and gyro bias are consistent (95-100% of samples inside 3σ). Position, wind and
-the barometer bias are **optimistic**: 60%, 52% and 12% respectively.
+the barometer bias are **optimistic**: 59%, 52% and 12% respectively.
 
 The cause is known and deliberate. The GNSS truth model includes a first-order Gauss-Markov
 correlated position error (σ = 1.5 m, τ = 300 s) that the filter does not model, and
@@ -152,7 +152,7 @@ negligible zero-order-hold error.
 * Dispersions are independent draws. Real parameter uncertainties are correlated (mass and
   inertia in particular), so the sampled corners of the box may be less likely than the
   campaign implies.
-* 256 trials resolve a ~3.5% failure rate to roughly ±1.1% (1-σ binomial). Quantifying a
+* 256 trials resolve a ~3.1% failure rate to roughly ±1.1% (1-σ binomial). Quantifying a
   rare-event probability — say 10⁻⁴ — would need importance sampling or a different method
   entirely.
 * Aerodynamic coefficients are dispersed multiplicatively and independently, so a coefficient

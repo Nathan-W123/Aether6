@@ -10,7 +10,7 @@ make run-scenarios               # the closed-loop regressions
 make monte-carlo                 # the statistical campaign
 ```
 
-Current status: **100 test cases, 33 898 assertions, all passing** (26 s, single-threaded,
+Current status: **102 test cases, 33 906 assertions, all passing** (26 s, single-threaded,
 `Release`, GCC 13.3 on an x86-64 container).
 
 ---
@@ -205,6 +205,7 @@ seed produces different ones; `reset()` zeroes the filter states.
 | Property | Result |
 |---|---|
 | Sample rates | 200/5/20/50/50 Hz over 10 s: 2000, 50, 200, 500, 500 samples (±2) |
+| Rate with an incommensurate step | 200 Hz on a 500 Hz frame delivers the configured rate to 0.5%, with jitter bounded by one step; a step longer than the period resynchronises instead of building a backlog |
 | Gyro white noise | 2×10⁵ samples: σ within 3% of configuration, mean below 5% of σ |
 | Gyro bias random walk | 400 independent runs: RMS after 100 s within 15% of `walk·√T` |
 | Magnetometer | with noise and bias disabled, reads `R(q)ᵀ m^n` exactly (1e-15); field magnitude correct; northern-hemisphere down component positive |
@@ -246,18 +247,18 @@ From `results/nominal` (300 s, `t > 20 s`), estimate error against the filter's 
 
 | state | RMS error | mean σ | inside 3σ |
 |---|---|---|---|
-| position N [m] | 0.979 | 0.329 | 60% |
-| position E [m] | 0.658 | 0.330 | 88% |
-| position D [m] | 0.838 | 0.247 | 30% |
+| position N [m] | 0.977 | 0.329 | 59% |
+| position E [m] | 0.660 | 0.330 | 87% |
+| position D [m] | 0.837 | 0.248 | 31% |
 | velocity N [m/s] | 0.141 | 0.107 | 95% |
-| velocity D [m/s] | 0.055 | 0.111 | 100% |
-| roll [rad] | 0.013 | 0.008 | 81% |
-| pitch [rad] | 0.017 | 0.007 | 58% |
-| yaw [rad] | 0.015 | 0.019 | 100% |
+| velocity D [m/s] | 0.054 | 0.111 | 100% |
+| roll [rad] | 0.013 | 0.008 | 80% |
+| pitch [rad] | 0.017 | 0.007 | 62% |
+| yaw [rad] | 0.016 | 0.019 | 100% |
 | gyro bias x [rad/s] | 0.0011 | 0.0016 | 100% |
-| accel bias x [m/s²] | 0.187 | 0.082 | 85% |
-| wind N [m/s] | 0.636 | 0.133 | 52% |
-| baro bias [m] | 0.833 | 0.165 | 12% |
+| accel bias x [m/s²] | 0.184 | 0.082 | 86% |
+| wind N [m/s] | 0.634 | 0.133 | 52% |
+| baro bias [m] | 0.832 | 0.165 | 12% |
 
 The velocity, yaw and gyro-bias channels are consistent. The position, wind and barometer-bias
 channels are **optimistic**, and the cause is known and deliberate: the GNSS truth model
@@ -348,12 +349,12 @@ count, failure rate and the statistics block; all four output files exist and ar
 
 ### Campaign result
 
-256 trials × 300 s, master seed 987654321, 4 threads, 146.6 s wall clock:
+256 trials × 300 s, master seed 987654321, 4 threads, 159.9 s wall clock:
 
-* **247 completed, 9 failed (3.5%)** — 7 ground contact, 2 airspeed high.
+* **248 completed, 8 failed (3.1%)** — 7 ground contact, 1 airspeed high.
 * The failures are concentrated in the heavy / low-lift-slope / low-density corner of the
-  dispersion box (mean failed mass 14.6 kg against 13.6 kg overall, mean failed `C_Lα` 4.28
-  against 5.03). Those combinations have roughly 25% higher effective wing loading, and the
+  dispersion box (mean failed mass 14.4 kg against 13.6 kg overall, mean failed `C_Lα` 4.24
+  against 5.01). Those combinations have roughly 25% higher effective wing loading, and the
   mission's 35°-bank turns at a fixed 23-27 m/s command run out of stall margin. This is a
   genuine vehicle-performance limit being found by the campaign, not a controller defect.
 
@@ -366,5 +367,5 @@ count, failure rate and the statistics block; all four output files exist and ar
 >    sideslip was wrong by 28° for the first second — enough to upset the aircraft before the
 >    filter converged.
 >
-> The failure rate went 12.1% → 44.5% → 4.7% → 3.5% as each was diagnosed and fixed. That
+> The failure rate went 12.1% → 44.5% → 4.7% → 3.1% as each was diagnosed and fixed. That
 > sequence is the argument for running the campaign at all.

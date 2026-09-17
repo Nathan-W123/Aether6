@@ -38,6 +38,18 @@ Vec3 SensorSuite::magneticFieldNed() const {
   return m.field_strength * Vec3(ch * std::cos(m.declination), ch * std::sin(m.declination), sh);
 }
 
+/// Advance a sampling schedule by exactly one period.
+///
+/// The next due time is taken from the *scheduled* time, not the time the sample actually
+/// fired, so a sensor period that is not an exact multiple of the simulation step still
+/// delivers its configured average rate (with sub-step jitter, exactly as a real sensor
+/// sampled on a fixed frame does). Advancing from the fire time instead accumulates the
+/// rounding error: a 200 Hz IMU on a 500 Hz frame would deliver only 167 Hz.
+static void advanceSchedule(double& next, double time, double period) {
+  next += period;
+  if (next <= time) next = time + period;  // the step is longer than the period: resynchronise
+}
+
 SensorBundle SensorSuite::sample(double time, double dt, const StateVec& truth,
                                  const dynamics::DynamicsDiagnostics& diag) {
   SensorBundle out;
@@ -61,7 +73,7 @@ SensorBundle SensorSuite::sample(double time, double dt, const StateVec& truth,
       out.imu.accel(i) = diag.specific_force(i) + accel_bias_(i) +
                          cfg_.imu.accel_noise_density * rng_imu_.gaussian();
     }
-    next_imu_ = time + period;
+    advanceSchedule(next_imu_, time, period);
   }
 
   // --- GNSS -------------------------------------------------------------------------
@@ -85,7 +97,7 @@ SensorBundle SensorSuite::sample(double time, double dt, const StateVec& truth,
                cfg_.gps.position_noise_d * rng_gps_.gaussian());
       out.gps.velocity_ned = vel_ned + cfg_.gps.velocity_noise * rng_gps_.gaussian3();
     }
-    next_gps_ = time + period;
+    advanceSchedule(next_gps_, time, period);
   }
 
   // --- Barometer --------------------------------------------------------------------
@@ -93,7 +105,7 @@ SensorBundle SensorSuite::sample(double time, double dt, const StateVec& truth,
     out.baro_valid = true;
     out.baro.time = time;
     out.baro.altitude = -s.position.z() + baro_bias_ + cfg_.baro.noise * rng_baro_.gaussian();
-    next_baro_ = time + 1.0 / cfg_.baro.rate;
+    advanceSchedule(next_baro_, time, 1.0 / cfg_.baro.rate);
   }
 
   // --- Magnetometer -----------------------------------------------------------------
@@ -102,7 +114,7 @@ SensorBundle SensorSuite::sample(double time, double dt, const StateVec& truth,
     out.mag.time = time;
     const Vec3 field_body = math::rotateNedToBody(s.quaternion, magneticFieldNed());
     out.mag.field_body = field_body + mag_bias_ + cfg_.magnetometer.noise * rng_mag_.gaussian3();
-    next_mag_ = time + 1.0 / cfg_.magnetometer.rate;
+    advanceSchedule(next_mag_, time, 1.0 / cfg_.magnetometer.rate);
   }
 
   // --- Pitot ------------------------------------------------------------------------
@@ -111,7 +123,7 @@ SensorBundle SensorSuite::sample(double time, double dt, const StateVec& truth,
     out.airspeed.time = time;
     out.airspeed.airspeed = std::max(
         0.0, diag.air.airspeed + airspeed_bias_ + cfg_.airspeed.noise * rng_air_.gaussian());
-    next_air_ = time + 1.0 / cfg_.airspeed.rate;
+    advanceSchedule(next_air_, time, 1.0 / cfg_.airspeed.rate);
   }
 
   (void)dt;
