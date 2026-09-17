@@ -1,0 +1,84 @@
+# =============================================================================================
+# Aether-6 generic small fixed-wing UAV  --  SYNTHETIC PARAMETER SET
+# =============================================================================================
+# These coefficients do NOT describe any real aircraft. They were derived from classical
+# thin-aerofoil and tail-volume relations for a plausible 13.5 kg, 2.6 m span airframe so that
+# every sign and magnitude is internally consistent (see docs/model.md, "Synthetic parameter
+# derivation"). The *model structure* follows the standard small-UAV formulation of
+# Beard & McLain, "Small Unmanned Aircraft: Theory and Practice" (Princeton, 2012), Ch. 4.
+#
+# All values are SI: m, kg, s, rad, N, unless a key name says otherwise (_deg suffix).
+# =============================================================================================
+name: "Aether-6 (synthetic small UAV)"
+synthetic: true
+
+mass_properties:
+  mass: 13.5        # kg
+  Jx: 0.824         # kg m^2, roll inertia
+  Jy: 1.135         # kg m^2, pitch inertia
+  Jz: 1.759         # kg m^2, yaw inertia
+  Jxz: 0.120        # kg m^2, x-z product of inertia
+
+geometry:
+  wing_area: 0.52   # m^2   (S)
+  wing_span: 2.60   # m     (b)  -> aspect ratio 13.0
+  mean_chord: 0.20  # m     (c)
+
+aerodynamics:
+  longitudinal:
+    CL0: 0.28         # -      lift at zero alpha
+    CL_alpha: 5.00    # 1/rad  finite-wing lift slope
+    CL_q: 5.50        # 1/rad  (non-dim by q c / 2 Va), from tail volume
+    CL_de: 0.43       # 1/rad  elevator lift effectiveness
+    CD0: 0.030        # -      parasite drag
+    CD_q: 0.0         # 1/rad
+    CD_de: 0.020      # 1/rad  (multiplies |delta_e|)
+    oswald: 0.85      # -      span efficiency
+    Cm0: 0.060        # -
+    Cm_alpha: -1.20   # 1/rad  static margin ~0.24 c
+    Cm_q: -19.0       # 1/rad  pitch damping from the horizontal tail
+    Cm_de: -1.50      # 1/rad  elevator control power (negative: TE down = nose down)
+    alpha_stall_deg: 17.2   # deg, blend point of the flat-plate post-stall model
+    stall_sharpness: 50.0   # 1/rad
+    enable_stall_model: true
+  lateral:
+    CY0: 0.0
+    CY_beta: -0.400   # 1/rad  side force due to sideslip
+    CY_p: -0.030      # 1/rad
+    CY_r: 0.150       # 1/rad
+    CY_da: 0.0
+    CY_dr: 0.155      # 1/rad  positive rudder (TE left) -> force to the right
+    Cl0: 0.0
+    Cl_beta: -0.080   # 1/rad  dihedral effect (stable)
+    Cl_p: -0.520      # 1/rad  roll damping
+    Cl_r: 0.120       # 1/rad
+    Cl_da: 0.160      # 1/rad  aileron roll power (positive = right roll)
+    Cl_dr: 0.007      # 1/rad
+    Cn0: 0.0
+    Cn_beta: 0.076    # 1/rad  weathercock stability (positive = stable)
+    Cn_p: -0.060      # 1/rad
+    Cn_r: -0.060      # 1/rad  yaw damping
+    Cn_da: -0.012     # 1/rad  adverse yaw
+    Cn_dr: -0.042     # 1/rad  rudder yaw power (negative: TE left = nose left)
+
+propulsion:
+  disk_area: 0.050    # m^2   propeller disk (0.25 m diameter)
+  efficiency: 1.0     # -     C_prop
+  k_motor: 45.0       # m/s   slipstream exit velocity at full throttle
+  k_torque: 5.0e-6    # N m s^2  reaction-torque constant
+  k_omega: 300.0      # rad/s per unit throttle
+  thrust_offset: [0.0, 0.0, 0.0]   # m, thrust line through the CG
+
+actuators:
+  elevator_min_deg: -25.0
+  elevator_max_deg: 25.0
+  aileron_min_deg: -20.0
+  aileron_max_deg: 20.0
+  rudder_min_deg: -25.0
+  rudder_max_deg: 25.0
+  throttle_min: 0.0
+  throttle_max: 1.0
+  surface_rate_limit_deg_s: 300.0   # deg/s
+  throttle_rate_limit: 2.0          # 1/s
+  surface_time_constant: 0.04       # s
+  throttle_time_constant: 0.20      # s

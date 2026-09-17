@@ -1,0 +1,49 @@
+{
+  "scenario": "ideal",
+  "controller": "lqr",
+  "feedback": "truth",
+  "integrator": "rk4",
+  "dt": 0.002,
+  "seed": 20240917,
+  "simulated_time_s": 299.998,
+  "completed": true,
+  "stable": true,
+  "termination_reason": "completed",
+  "trim": {
+    "alpha_deg": 4.578831496,
+    "theta_deg": 4.578831434,
+    "elevator_deg": -1.371234016,
+    "throttle": 0.6705425761,
+    "residual_inf_norm": 6.144439161e-14
+  },
+  "tracking": {
+    "rms_cross_track_m": 10.24723612,
+    "max_cross_track_m": 41.22201863,
+    "rms_altitude_error_m": 0.6129220366,
+    "max_altitude_error_m": 3.722757524,
+    "rms_airspeed_error_mps": 0.6051353048,
+    "max_airspeed_error_mps": 1.999926765,
+    "max_bank_deg": 39.24667538,
+    "max_alpha_deg": 10.30088685,
+    "waypoints_reached": 13,
+    "laps_completed": 2
+  },
+  "estimator": {
+    "rmse_position_m": 1.426052036,
+    "rmse_position_horizontal_m": 1.153845346,
+    "rmse_altitude_m": 0.8380127249,
+    "rmse_velocity_mps": 0.102582671,
+    "rmse_attitude_deg": 1.344782558,
+    "rmse_yaw_deg": 0.5712840966,
+    "final_gyro_bias_error_radps": 0.001566507903,
+    "final_accel_bias_error_mps2": 0.1328206004,
+    "min_covariance_eigenvalue": 2.22202985e-06
+  },
+  "performance": {
+    "wall_clock_s": 3.855577023,
+    "real_time_factor": 77.80884631,
+    "dynamics_evaluations": 1007992,
+    "steps": 150000,
+    "rejected_steps": 0
+  }
+}

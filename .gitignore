@@ -1,0 +1,39 @@
+# ---------------------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------------------
+build/
+build-*/
+cmake-build-*/
+compile_commands.json
+*.o
+*.a
+*.so
+
+# ---------------------------------------------------------------------------------------
+# Generated simulation logs.
+#
+# The *figures* and the small summary/analysis files under results/ ARE committed, so the
+# repository ships reproducible example outputs. The bulk time-series logs are not: a single
+# 300 s run writes ~13 MB of CSV, and `make run-all` regenerates all of it in a few minutes.
+# ---------------------------------------------------------------------------------------
+results/*/states.csv
+results/*/sensor_*.csv
+results/monte_carlo/trajectories.csv
+results/monte_carlo/nominal_trial/
+
+# ---------------------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------------------
+# Editors and OS
+# ---------------------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store

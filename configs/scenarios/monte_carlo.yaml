@@ -1,0 +1,214 @@
+# =============================================================================================
+# Monte-Carlo campaign: the nominal mission flown repeatedly with dispersed vehicle, aero,
+# environment, initial-condition and sensor parameters. The integration step is relaxed from
+# 500 Hz to 250 Hz (still ~1e-7 m accurate over the run, see docs/benchmarks.md) so a few
+# hundred trials finish in a couple of minutes.
+# All values SI unless the key name ends in _deg / _deg_s.
+# =============================================================================================
+name: monte_carlo
+aircraft: ../aircraft/aether6_uav.yaml
+duration: 300.0        # s
+control_rate: 100.0    # Hz
+seed: 20240917
+
+integration:
+  integrator: rk4      # rk4 | dopri54
+  dt: 0.004            # s, outer fixed step (250 Hz)
+  tolerances:          # only used by dopri54
+    rel_tol: 1.0e-8
+    abs_tol: 1.0e-10
+    min_step: 1.0e-6
+    max_step: 0.01
+
+initial:
+  from_trim: true
+  airspeed: 25.0       # m/s
+  altitude: 120.0      # m
+  north: 0.0
+  east: 0.0
+  heading_deg: 0.0
+  flight_path_angle_deg: 0.0
+  delta_altitude: 0.0
+  delta_airspeed: 0.0
+  delta_roll_deg: 0.0
+  delta_pitch_deg: 0.0
+  delta_yaw_deg: 0.0
+
+environment:
+  density_scale: 1.0
+  wind:
+    steady_ned: [3.0, -4.0, 0.0]   # m/s at the reference altitude (5 m/s from the SE quadrant)
+    enable_shear: true
+    shear_reference_altitude: 120.0
+    shear_roughness: 0.05
+    enable_turbulence: true
+    altitude_scaled: true          # MIL-F-8785C low-altitude sigma/L scaling
+    w20: 6.0                       # m/s wind at 6 m, sets the turbulence intensity
+
+control:
+  type: lqr            # lqr | pid
+  feedback: estimate   # estimate | truth
+  lqr:
+    weights:
+      q_u: 2.0
+      q_w: 2.0
+      q_pitch_rate: 8.0
+      q_pitch: 60.0
+      q_altitude: 3.0
+      q_int_altitude: 0.20
+      q_int_airspeed: 3.0
+      r_elevator: 300.0
+      r_throttle: 6.0
+      q_v: 1.0
+      q_roll_rate: 3.0
+      q_yaw_rate: 12.0
+      q_roll: 25.0
+      q_course: 90.0
+      q_int_course: 6.0
+      r_aileron: 200.0
+      r_rudder: 200.0
+    limits:
+      max_bank_deg: 35.0
+      max_pitch_deg: 20.0
+      max_climb_rate: 4.0
+      integrator_authority: 0.25
+      protection_enabled: true
+      alpha_max_deg: 13.8
+      alpha_protection_gain: 2.5
+      alpha_protection_rate_gain: 0.35
+      alpha_protection_blend_deg: 5.0
+      integrator_altitude_limit: 400.0
+      integrator_airspeed_limit: 60.0
+      integrator_course_limit: 8.0
+      course_error_limit_deg: 70.0
+      altitude_error_limit: 60.0
+
+guidance:
+  terminal: loop
+  path_gain: 0.035        # 1/m
+  chi_infinity_deg: 60.0
+  capture_radius: 45.0    # m
+  orbit_radius: 90.0
+  orbit_gain: 2.5
+  orbit_direction: 1
+  use_half_plane_switching: true
+  waypoints:
+    - {north:    0.0, east:    0.0, altitude: 120.0, airspeed: 25.0}
+    - {north:  600.0, east:    0.0, altitude: 150.0, airspeed: 25.0}
+    - {north:  900.0, east:  500.0, altitude: 150.0, airspeed: 27.0}
+    - {north:  600.0, east:  900.0, altitude: 110.0, airspeed: 25.0}
+    - {north:    0.0, east:  900.0, altitude: 110.0, airspeed: 23.0}
+    - {north: -300.0, east:  450.0, altitude: 130.0, airspeed: 25.0}
+
+sensors:
+  enable_gps: true
+  gps_outage_start: -1.0
+  gps_outage_end: -1.0
+  imu:
+    rate: 200.0
+    gyro_noise: 0.0035        # rad/s
+    accel_noise: 0.05         # m/s^2
+    gyro_bias_initial: 0.010  # rad/s
+    accel_bias_initial: 0.08  # m/s^2
+    gyro_bias_walk: 3.0e-4    # rad/s/sqrt(s)
+    accel_bias_walk: 3.0e-3   # m/s^2/sqrt(s)
+  gps:
+    rate: 5.0
+    position_noise_ne: 1.2    # m
+    position_noise_d: 2.5     # m
+    velocity_noise: 0.15      # m/s
+    slow_error_sigma: 1.5     # m
+    slow_error_tau: 300.0     # s
+  baro:
+    rate: 20.0
+    noise: 0.6                # m
+    bias_sigma: 2.0           # m
+  magnetometer:
+    rate: 50.0
+    field_strength: 50.0e-6   # T
+    inclination_deg: 65.0
+    declination_deg: 11.0
+    noise: 0.4e-6             # T
+    bias_sigma: 0.6e-6        # T
+  airspeed:
+    rate: 50.0
+    noise: 0.35               # m/s
+    bias_sigma: 0.25          # m/s
+
+estimator:
+  gyro_noise: 0.0045
+  accel_noise: 0.07
+  gyro_bias_walk: 5.0e-4
+  accel_bias_walk: 0.04        # inflated well above the truth (3e-3): the x accel
+                               # bias is only weakly separable from pitch attitude in
+                               # near-level flight, and this keeps sigma honest
+  gps_position_ne: 2.2
+  gps_position_d: 3.5
+  gps_velocity: 0.25
+  baro_noise: 1.5
+  mag_noise: 0.8e-6
+  airspeed_noise: 0.6
+  wind_walk: 0.05
+  baro_bias_walk: 0.01
+  init_position_sigma: 5.0
+  init_velocity_sigma: 1.0
+  init_attitude_sigma_deg: 5.0
+  init_gyro_bias_sigma: 0.02
+  init_accel_bias_sigma: 0.2
+  init_wind_sigma: 6.0
+  init_baro_bias_sigma: 3.0
+  exact_discretisation: false
+  innovation_gate: 25.0
+  use_baro: true
+  use_magnetometer: true
+  use_airspeed: true
+  initialise_wind_from_airspeed: true
+
+logging:
+  output_dir: results/monte_carlo/nominal_trial
+  decimation: 25        # every 25th step at dt = 0.002 s -> 20 Hz
+  enabled: false
+  log_sensors: false
+  log_estimator: true
+
+safety:
+  ground_altitude: 0.0
+  max_altitude: 3000.0
+  min_airspeed: 8.0
+  max_airspeed: 60.0
+  max_bank_deg: 80.0
+  max_pitch_deg: 75.0
+  stop_on_ground_contact: true
+
+# =============================================================================================
+# Monte-Carlo campaign definition. Trial i draws every random quantity from SplitMix64 streams
+# derived from master_seed and i, so results are reproducible and independent of thread count.
+# =============================================================================================
+monte_carlo:
+  trials: 256
+  master_seed: 987654321
+  threads: 0                  # 0 = use all hardware threads
+  trajectory_interval: 1.0    # s, in-memory trajectory sampling for the envelope plots
+  recorded_trajectories: 64   # keep full trajectories for this many trials
+  output_dir: results/monte_carlo
+  dispersions:
+    vary_mass_properties: true
+    mass_relative: 0.08       # 1-sigma, relative
+    inertia_relative: 0.12
+    vary_aerodynamics: true
+    aero_relative: 0.12       # 1-sigma on each aerodynamic derivative, relative
+    thrust_relative: 0.08
+    vary_initial_conditions: true
+    initial_altitude: 10.0    # m, 1-sigma
+    initial_airspeed: 1.5     # m/s
+    initial_roll_deg: 5.7
+    initial_pitch_deg: 4.0
+    initial_yaw_deg: 20.0
+    vary_environment: true
+    wind_speed_mean: 5.0      # m/s
+    wind_speed_sigma: 3.0
+    w20_mean: 7.0
+    w20_sigma: 3.5
+    density_relative: 0.05
+    vary_sensors: true
+    sensor_scale_sigma: 0.30  # 1-sigma of the log-normal scaling of all sensor sigmas

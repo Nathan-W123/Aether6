@@ -1,0 +1,110 @@
+name: build-and-test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.compiler }} / ${{ matrix.build_type }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+            build_type: Release
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+            build_type: Release
+          # The Debug job exists to exercise Eigen's own assertions (bounds, alignment,
+          # aliasing), which Release compiles out. Unoptimised Eigen is roughly two orders
+          # of magnitude slower, so this job skips the long statistical and end-to-end
+          # cases; Release runs the whole suite.
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+            build_type: Debug
+            test_filter: "~[slow]~[statistics]" 
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build clang \
+            libeigen3-dev libyaml-cpp-dev catch2
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DAETHER_ENABLE_WERROR=ON
+
+      - name: Build
+        run: cmake --build build -j "$(nproc)"
+
+      - name: Test (full suite through CTest)
+        if: matrix.build_type != 'Debug'
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Test (Debug subset, Eigen assertions enabled)
+        if: matrix.build_type == 'Debug'
+        timeout-minutes: 30
+        run: ./build/bin/aether_tests "${{ matrix.test_filter }}"
+
+      # The remaining steps are the headline reproduction path, run once (Release/GCC only)
+      # so CI proves that the documented commands actually work from a clean checkout.
+      - name: Trim, linearise and export the model
+        if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
+        run: ./build/bin/aether_trim configs/scenarios/nominal.yaml --output results/linear --sweep 16:34:19
+
+      - name: Closed-loop scenarios
+        if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
+        run: |
+          for scenario in nominal ideal nominal_pid wind_disturbance; do
+            ./build/bin/aether_sim "configs/scenarios/${scenario}.yaml"
+          done
+
+      - name: Integrator study
+        if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
+        run: ./build/bin/aether_integrators configs/scenarios/nominal.yaml --output results/integrators
+
+      - name: Monte-Carlo campaign (reduced trial count for CI)
+        if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
+        run: ./build/bin/aether_mc configs/scenarios/monte_carlo.yaml --trials 32
+
+      - name: Figures
+        if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
+        run: |
+          python3 -m pip install --quiet --upgrade pip
+          python3 -m pip install --quiet numpy pandas matplotlib
+          python3 python/scripts/make_figures.py --no-animation
+
+      - name: Upload artefacts
+        if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aether6-results
+          path: |
+            results/figures/
+            results/**/summary.json
+            results/linear/
+            results/integrators/
+            results/monte_carlo/trials.csv
+          if-no-files-found: error
+          retention-days: 14
