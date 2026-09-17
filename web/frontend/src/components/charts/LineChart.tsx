@@ -3,14 +3,7 @@ import { useMemo, useState } from 'react'
 import { useMeasure } from '../../lib/useMeasure'
 import { SEMANTIC } from '../../lib/palette'
 import {
-  bandPath,
-  extent,
-  formatTick,
-  linePath,
-  linearScale,
-  nearestIndex,
-  niceTicks,
-  padDomain,
+  bandPath, extent, formatTick, linePath, linearScale, nearestIndex, niceTicks, padDomain,
 } from './plot'
 
 export interface LineSeries {
@@ -18,15 +11,13 @@ export interface LineSeries {
   x: number[]
   y: number[]
   color: string
-  /** Dashed lines are for references — commands, truth overlays — not for data. */
+  /** Dashed marks a reference — a command, a limit — not a measured quantity. */
   dashed?: boolean
   width?: number
-  /** Keep the series out of the legend (e.g. the mirror half of a ±σ pair). */
   hideFromLegend?: boolean
 }
 
 export interface ChartBand {
-  label?: string
   x: number[]
   lower: number[]
   upper: number[]
@@ -36,33 +27,32 @@ export interface ChartBand {
 interface Props {
   series: LineSeries[]
   bands?: ChartBand[]
-  xLabel: string
-  yLabel: string
+  /** Axis quantity and unit, e.g. "altitude" and "m". Printed separately, as on a plot. */
+  y: string
+  yUnit: string
+  x?: string
+  xUnit?: string
   height?: number
-  /** Draw a rule at y = 0; use where zero is the target, not merely inside the range. */
+  /** A rule at zero, where zero is the target rather than merely inside the range. */
   zeroLine?: boolean
   yDomain?: [number, number]
-  /** Rendered in the top-right of the plot area, e.g. an RMS value. */
-  annotation?: string
+  /** A horizontal limit line drawn in oxide, labelled. */
+  limit?: { value: number; label: string }
 }
 
-const MARGIN = { top: 10, right: 12, bottom: 26, left: 52 }
+const MARGIN = { top: 12, right: 10, bottom: 30, left: 54 }
 
 /**
- * A multi-series line chart with one y-axis.
+ * A time-history plot.
  *
- * Deliberately one axis only: a second scale on the right invites false comparisons between
- * quantities in different units. Where two units must appear together, they get two panels.
+ * One y-axis, always: a second scale on the right invites a comparison between quantities in
+ * different units that the data does not support. Where two units must be read together they
+ * get two figures. The hover crosshair reports every series at the sampled instant, so a
+ * reader takes values off the plot rather than estimating them against the grid.
  */
 export function LineChart({
-  series,
-  bands = [],
-  xLabel,
-  yLabel,
-  height = 190,
-  zeroLine = false,
-  yDomain,
-  annotation,
+  series, bands = [], y, yUnit, x = 'time', xUnit = 's', height = 176,
+  zeroLine = false, yDomain, limit,
 }: Props) {
   const [ref, { width }] = useMeasure<HTMLDivElement>()
   const [hoverX, setHoverX] = useState<number | null>(null)
@@ -72,32 +62,32 @@ export function LineChart({
 
   const model = useMemo(() => {
     const xs = extent(series.map((s) => s.x).concat(bands.map((b) => b.x)))
-    const ysRaw = extent(
-      series
-        .map((s) => s.y)
-        .concat(bands.flatMap((b) => [b.lower, b.upper])),
-    )
-    if (!xs || !ysRaw) return null
-    const ys = yDomain ?? padDomain(zeroLine ? [Math.min(ysRaw[0], 0), Math.max(ysRaw[1], 0)] : ysRaw)
+    const raw = extent(
+      series.map((s) => s.y)
+        .concat(bands.flatMap((b) => [b.lower, b.upper]))
+        .concat(limit ? [[limit.value]] : []))
+    if (!xs || !raw) return null
+    const ys = yDomain
+      ?? padDomain(zeroLine ? [Math.min(raw[0], 0), Math.max(raw[1], 0)] : raw)
     return {
       sx: linearScale(xs, [0, plotWidth]),
       sy: linearScale(ys, [plotHeight, 0]),
-      xTicks: niceTicks(xs, Math.max(2, Math.round(plotWidth / 90))),
-      yTicks: niceTicks(ys, Math.max(2, Math.round(plotHeight / 42))),
+      xTicks: niceTicks(xs, Math.max(2, Math.round(plotWidth / 86))),
+      yTicks: niceTicks(ys, Math.max(2, Math.round(plotHeight / 38))),
     }
-  }, [series, bands, plotWidth, plotHeight, zeroLine, yDomain])
+  }, [series, bands, plotWidth, plotHeight, zeroLine, yDomain, limit])
 
-  const hover = useMemo(() => {
-    if (hoverX === null || !model || series.length === 0) return null
-    const value = model.sx.domain[0] + (hoverX / (plotWidth || 1)) *
-      (model.sx.domain[1] - model.sx.domain[0])
-    const readouts = series
-      .filter((s) => !s.hideFromLegend)
-      .map((s) => {
-        const index = nearestIndex(s.x, value)
-        return { label: s.label, color: s.color, value: index >= 0 ? s.y[index] : NaN }
-      })
-    return { x: value, readouts }
+  const readouts = useMemo(() => {
+    if (hoverX === null || !model) return null
+    const at = model.sx.domain[0]
+      + (hoverX / (plotWidth || 1)) * (model.sx.domain[1] - model.sx.domain[0])
+    return {
+      at,
+      values: series.filter((s) => !s.hideFromLegend).map((s) => {
+        const i = nearestIndex(s.x, at)
+        return { label: s.label, value: i >= 0 ? s.y[i] : NaN }
+      }),
+    }
   }, [hoverX, model, series, plotWidth])
 
   const legend = series.filter((s) => !s.hideFromLegend)
@@ -105,68 +95,67 @@ export function LineChart({
   return (
     <div>
       {legend.length > 1 && (
-        <div className="legend" style={{ marginBottom: 6 }}>
+        <div className="legend">
           {legend.map((s) => {
-            const readout = hover?.readouts.find((r) => r.label === s.label)
+            const readout = readouts?.values.find((r) => r.label === s.label)
             return (
               <span className="legend-item" key={s.label}>
-                <span
-                  className={`legend-swatch${s.dashed ? ' dashed' : ''}`}
-                  style={{ background: s.dashed ? undefined : s.color, color: s.color }}
-                />
+                <span className="legend-key" style={{
+                  borderTopColor: s.color,
+                  borderTopStyle: s.dashed ? 'dashed' : 'solid',
+                }} />
                 {s.label}
                 {readout && Number.isFinite(readout.value) && (
-                  <span className="mono" style={{ color: 'var(--text)' }}>
-                    {formatReadout(readout.value)}
-                  </span>
+                  <span className="legend-value">{compact(readout.value)}</span>
                 )}
               </span>
             )
           })}
         </div>
       )}
+
       <div ref={ref} style={{ width: '100%' }}>
-        {width > 0 && model && (
+        {width > 0 && model ? (
           <svg
-            width={width}
-            height={height}
-            role="img"
-            aria-label={`${yLabel} against ${xLabel}`}
+            width={width} height={height} role="img"
+            aria-label={`${y} in ${yUnit} against ${x} in ${xUnit}`}
             onPointerMove={(event) => {
               const box = event.currentTarget.getBoundingClientRect()
-              const x = event.clientX - box.left - MARGIN.left
-              setHoverX(x >= 0 && x <= plotWidth ? x : null)
+              const px = event.clientX - box.left - MARGIN.left
+              setHoverX(px >= 0 && px <= plotWidth ? px : null)
             }}
             onPointerLeave={() => setHoverX(null)}
           >
             <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
               {model.yTicks.map((tick) => (
                 <g key={`y${tick}`} transform={`translate(0,${model.sy(tick).toFixed(1)})`}>
-                  <line x2={plotWidth} stroke={SEMANTIC.grid} />
-                  <text x={-8} dy="0.32em" textAnchor="end" fontSize={10.5} fill="var(--text-dim)"
-                        className="mono">
+                  <line x2={plotWidth} stroke={SEMANTIC.grid} strokeWidth={1} />
+                  <line x1={-4} x2={0} stroke={SEMANTIC.axis} strokeWidth={1} />
+                  <text x={-8} dy="0.32em" textAnchor="end" fontSize={10}
+                        fill="var(--ink-mute)" fontFamily="var(--mono)">
                     {formatTick(tick, model.yTicks)}
                   </text>
                 </g>
               ))}
               {model.xTicks.map((tick) => (
                 <g key={`x${tick}`} transform={`translate(${model.sx(tick).toFixed(1)},0)`}>
-                  <line y2={plotHeight} stroke={SEMANTIC.grid} />
-                  <text y={plotHeight + 15} textAnchor="middle" fontSize={10.5}
-                        fill="var(--text-dim)" className="mono">
+                  <line y2={plotHeight} stroke={SEMANTIC.grid} strokeWidth={1} />
+                  <line y1={plotHeight} y2={plotHeight + 4} stroke={SEMANTIC.axis} strokeWidth={1} />
+                  <text y={plotHeight + 15} textAnchor="middle" fontSize={10}
+                        fill="var(--ink-mute)" fontFamily="var(--mono)">
                     {formatTick(tick, model.xTicks)}
                   </text>
                 </g>
               ))}
 
               {zeroLine && model.sy.domain[0] <= 0 && model.sy.domain[1] >= 0 && (
-                <line y1={model.sy(0)} y2={model.sy(0)} x2={plotWidth} stroke={SEMANTIC.axis}
-                      strokeDasharray="3 3" />
+                <line y1={model.sy(0)} y2={model.sy(0)} x2={plotWidth}
+                      stroke={SEMANTIC.axis} strokeWidth={1} />
               )}
 
               {bands.map((band, i) => (
-                <path key={`band${i}`} d={bandPath(band.x, band.lower, band.upper, model.sx, model.sy)}
-                      fill={band.fill} stroke="none" />
+                <path key={`b${i}`} fill={band.fill} stroke="none"
+                      d={bandPath(band.x, band.lower, band.upper, model.sx, model.sy)} />
               ))}
 
               {series.map((s) => (
@@ -175,48 +164,57 @@ export function LineChart({
                   d={linePath(s.x, s.y, model.sx, model.sy)}
                   fill="none"
                   stroke={s.color}
-                  strokeWidth={s.width ?? 1.4}
-                  strokeDasharray={s.dashed ? '4 3' : undefined}
+                  strokeWidth={s.width ?? 1.5}
+                  strokeDasharray={s.dashed ? '5 3' : undefined}
                   strokeLinejoin="round"
                   strokeLinecap="round"
                 />
               ))}
 
-              {hover && (
-                <line x1={model.sx(hover.x)} x2={model.sx(hover.x)} y2={plotHeight}
-                      stroke={SEMANTIC.axis} strokeWidth={1} pointerEvents="none" />
+              {limit && (
+                <g>
+                  <line y1={model.sy(limit.value)} y2={model.sy(limit.value)} x2={plotWidth}
+                        stroke="var(--oxide)" strokeWidth={1} strokeDasharray="6 3" />
+                  <text x={plotWidth - 3} y={model.sy(limit.value) - 4} textAnchor="end"
+                        fontSize={10} fill="var(--oxide)" fontFamily="var(--mono)">
+                    {limit.label}
+                  </text>
+                </g>
               )}
 
-              {annotation && (
-                <text x={plotWidth} y={2} dy="0.8em" textAnchor="end" fontSize={11}
-                      fill="var(--text-muted)" className="mono">
-                  {annotation}
-                </text>
+              {readouts && (
+                <line x1={model.sx(readouts.at)} x2={model.sx(readouts.at)} y2={plotHeight}
+                      stroke="var(--ink)" strokeWidth={1} opacity={0.5} pointerEvents="none" />
               )}
 
-              <line y1={plotHeight} y2={plotHeight} x2={plotWidth} stroke={SEMANTIC.axis} />
-              <line y2={plotHeight} stroke={SEMANTIC.axis} />
+              {/* Axes drawn last so marks never sit on top of the frame. */}
+              <line y1={plotHeight} y2={plotHeight} x2={plotWidth}
+                    stroke={SEMANTIC.axis} strokeWidth={1} />
+              <line y2={plotHeight} stroke={SEMANTIC.axis} strokeWidth={1} />
             </g>
-            <text x={MARGIN.left + plotWidth / 2} y={height - 1} textAnchor="middle" fontSize={10.5}
-                  fill="var(--text-dim)">
-              {xLabel}
+
+            <text x={MARGIN.left} y={height - 2} fontSize={10} fill="var(--ink-faint)"
+                  fontFamily="var(--sans)" letterSpacing="0.08em">
+              {x.toUpperCase()} [{xUnit}]
             </text>
             <text transform={`translate(11,${MARGIN.top + plotHeight / 2}) rotate(-90)`}
-                  textAnchor="middle" fontSize={10.5} fill="var(--text-dim)">
-              {yLabel}
+                  textAnchor="middle" fontSize={10} fill="var(--ink-faint)"
+                  fontFamily="var(--sans)" letterSpacing="0.08em">
+              {y.toUpperCase()} [{yUnit}]
             </text>
           </svg>
+        ) : (
+          <div className="placeholder" style={{ height }} />
         )}
-        {width === 0 && <div className="skeleton" style={{ height }} />}
       </div>
     </div>
   )
 }
 
-function formatReadout(value: number): string {
-  const magnitude = Math.abs(value)
-  if (magnitude >= 100) return value.toFixed(0)
-  if (magnitude >= 10) return value.toFixed(1)
-  if (magnitude >= 0.1) return value.toFixed(2)
+function compact(value: number): string {
+  const m = Math.abs(value)
+  if (m >= 100) return value.toFixed(0)
+  if (m >= 10) return value.toFixed(1)
+  if (m >= 0.1) return value.toFixed(2)
   return value.toFixed(3)
 }

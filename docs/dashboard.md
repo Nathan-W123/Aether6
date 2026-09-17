@@ -1,9 +1,14 @@
 # Web dashboard
 
-A single-page dashboard that runs the real simulator on demand. It exists so the project can
-be understood in about thirty seconds by someone who will not clone it: pick a scenario,
-watch the aircraft fly the circuit, and see the tracking, control, estimation and robustness
-results that follow from it.
+A single-page flight-test report that runs the real simulator on demand. It exists so the
+project can be understood in about thirty seconds by someone who will not clone it: pick a
+case from the test matrix, watch the aircraft fly the circuit, and read the tracking, control,
+estimation and robustness results that follow from it.
+
+The page is laid out as an engineering drawing sheet — nine numbered sections, twenty-one
+numbered figures, a run card stating the conditions and a title block stating how to reproduce
+them — because that is the form this subject is actually reported in, and because it puts the
+data rather than the interface in front of the reader.
 
 The page shows *computed* results, not stored screenshots. Every trajectory, chart and number
 under "Trajectory" through "LQR against classical PID" comes from a `aether_sim` process
@@ -74,10 +79,13 @@ web/
 └── frontend/
     ├── src/
     │   ├── api/            typed client and response types
-    │   ├── components/     panels, 3D view, SVG chart primitives
+    │   ├── components/
+    │   │   ├── sheet/      Section, Figure and DataTable primitives
+    │   │   ├── charts/     SVG line, scatter and histogram primitives
+    │   │   └── *.tsx       the report's sections, the 3D view, the run card
     │   ├── lib/            palette, formatting, measurement hook
-    │   ├── App.tsx         layout and run orchestration
-    │   └── theme.css       design tokens
+    │   ├── App.tsx         the sheet: section order and run orchestration
+    │   └── theme.css       design tokens for both renderings
     └── package.json
 ```
 
@@ -221,28 +229,54 @@ makes every visitor wait longer.
 
 ## Design decisions
 
-**The frontend has three dependencies.** React, ReactDOM and Three.js. The charts are drawn
-by about 590 lines of SVG primitives in `src/components/charts/`, because a charting library
-would have brought its own colour handling and its own opinions about dual axes, and the
-alternative was to fight it on both. The 3D view uses Three.js directly rather than
-`@react-three/fiber`, whose peer-dependency tree pulls in Expo. The result is a 90 kB gzipped
-application chunk plus a 132 kB Three.js chunk that changes between deploys only when
-Three.js does.
+**The page is a flight-test report, not a dashboard.** Sections are numbered and read in
+order; figures are numbered continuously and captioned with the one value worth reading off
+them; tables are ruled horizontally only, with units in their own column; and the sheet closes
+with a title block stating what it would take to reproduce the figures. Rules and space
+separate the sections rather than borders and shadows, because a page where every block is an
+identical rounded card has no hierarchy left to spend.
 
-**One y-axis per chart panel.** Quantities in different units get different panels. A second
-axis on the right is the fastest way to imply a relationship between two series that has no
-physical meaning.
+**Colour is reserved for plotted data.** Every piece of chrome — rules, labels, axes, controls
+— is achromatic, and the single non-data hue, an oxide red, marks an exceeded limit the way a
+revision mark annotates a drawing: the unstable half-plane in the pole plot, the α limit in
+Fig. 7, a divergent damping ratio, a run the safety monitor stopped. Nothing is coloured to be
+decorative.
 
-**A fixed, colour-vision-safe series order.** Eight hues, checked for separation under
-deuteranopia, protanopia and tritanopia against the dark surface, used in the same order
-everywhere so a colour means the same thing across panels. The order is never cycled: a panel
-that would need a ninth series is split instead.
+**A fixed, colour-vision-safe series order.** Eight hues, validated with a script rather than
+by eye against *both* plotting surfaces for the lightness band, the chroma floor, adjacent-pair
+separation under deuteranopia, protanopia and tritanopia, and normal-vision separation. The
+order is never cycled: a figure that would need a ninth series is split in two. Three of the
+light steps sit below 3:1 against the sheet, so every figure with two or more series carries a
+legend naming each one — identity is never carried by colour alone. The dispersion scatter,
+which compares every pair at once rather than adjacent pairs, is capped at the three slots that
+clear the all-pairs floors.
 
-**The estimator's axes carry the filter's own uncertainty.** The position, attitude and gyro
-bias error panels shade ±1σ from the covariance diagonal. A filter whose errors sit outside
-its own band is mistuned, and that is visible at a glance rather than buried in a metric.
+**One y-axis per figure.** Quantities in different units get different figures. A second axis
+on the right is the fastest way to imply a relationship between two series that the data does
+not support.
 
-**The page is never empty.** The nominal preset runs as soon as `/api/meta` returns, so the
+**Three typefaces, one family.** IBM Plex Sans Condensed for section titles and the small-caps
+labels, IBM Plex Serif for running prose, IBM Plex Mono for every number, tick, table cell and
+readout. The faces are bundled through `@fontsource`, not fetched from a font CDN, so the sheet
+renders identically offline, behind a proxy and under a strict content-security policy.
+
+**The estimator's figures carry the filter's own uncertainty.** The position, attitude and gyro
+bias error panels shade ±1σ from the covariance diagonal. A filter whose errors sit outside its
+own band is mistuned, and that is checkable by eye rather than buried in a metric.
+
+**Both renderings are designed.** The light sheet is the primary design; the dark one is
+separately stepped for its own surface, with its own validated series palette, not an inversion
+of the light one. The viewer's system setting picks between them.
+
+**Three runtime dependencies.** React, ReactDOM and Three.js. The charts are drawn by about 700
+lines of SVG primitives in `src/components/charts/`, because a charting library would have
+brought its own colour handling and its own opinions about dual axes, and the alternative was
+to fight it on both. The 3D view uses Three.js directly rather than `@react-three/fiber`, whose
+peer-dependency tree pulls in Expo, and reads the sheet's own CSS tokens so the scene matches
+whichever rendering the viewer is in. The result is a 93 kB gzipped application chunk plus a
+132 kB Three.js chunk that changes between deploys only when Three.js does.
+
+**The sheet is never blank.** The nominal case flies as soon as `/api/meta` returns, so the
 first thing a visitor sees is a flown mission rather than a form.
 
 **The 3D attitude is the simulated attitude.** NED maps to the viewer's frame as

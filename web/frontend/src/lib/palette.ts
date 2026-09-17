@@ -1,39 +1,47 @@
 /**
- * Series colours.
+ * Plotting colours.
  *
- * One fixed hue order, used in the same sequence in every chart, so a colour means the same
- * thing wherever it appears on the page. The set is checked for deuteranopia, protanopia and
- * tritanopia separation against the dark surface these charts sit on, and is never cycled:
- * a panel that would need a ninth series is split into two panels instead.
+ * Every value is a CSS custom property rather than a literal, so a series keeps its identity
+ * when the sheet switches between the light and dark rendering — the two sets are separately
+ * stepped for their own surface, not one flipped into the other.
+ *
+ * The eight-hue order is fixed and never cycled. It was validated against both plotting
+ * surfaces for the lightness band, the chroma floor, adjacent-pair separation under
+ * deuteranopia, protanopia and tritanopia, and normal-vision separation. Three of the light
+ * steps sit below 3:1 against the sheet, so every figure with two or more series carries a
+ * legend naming each one: identity is never carried by colour alone.
+ *
+ * Forms that compare every pair at once rather than adjacent pairs — the dispersion scatter —
+ * are capped at the first three slots, which are the ones that clear the all-pairs floors.
  */
 export const SERIES = [
-  '#3987e5', // blue
-  '#d95926', // orange
-  '#199e70', // green
-  '#c98500', // amber
-  '#d55181', // pink
-  '#5cc8c0', // teal
-  '#9085e9', // violet
-  '#e66767', // coral
+  'var(--series-1)', // blue
+  'var(--series-2)', // orange
+  'var(--series-3)', // aqua
+  'var(--series-4)', // yellow
+  'var(--series-5)', // magenta
+  'var(--series-6)', // green
+  'var(--series-7)', // violet
+  'var(--series-8)', // red
 ] as const
 
-/** Semantic colours that carry meaning rather than identity. */
-export const SEMANTIC = {
-  truth: '#3987e5',
-  estimate: '#d95926',
-  command: '#8fa0ba',
-  lqr: '#3987e5',
-  pid: '#d95926',
-  good: '#199e70',
-  warn: '#c98500',
-  bad: '#e66767',
-  band: 'rgba(57, 135, 229, 0.22)',
-  bandEstimate: 'rgba(217, 89, 38, 0.22)',
-  grid: 'rgba(143, 160, 186, 0.16)',
-  axis: 'rgba(143, 160, 186, 0.45)',
-} as const
-
-/** The n-th series colour, without wrapping past the validated set. */
+/** The n-th plotting colour. Never wraps: a ninth series folds into a second figure. */
 export function seriesColor(index: number): string {
   return SERIES[Math.min(index, SERIES.length - 1)]
 }
+
+/** Colours that carry a meaning rather than an identity. */
+export const SEMANTIC = {
+  truth: 'var(--series-1)',
+  estimate: 'var(--series-2)',
+  lqr: 'var(--series-1)',
+  pid: 'var(--series-2)',
+  /** Commands and references are drawn in ink, dashed — they are not a measured quantity. */
+  reference: 'var(--ink-mute)',
+  /** Reserved for a limit exceeded or a run cut short. Never used as a series. */
+  limit: 'var(--oxide)',
+  band: 'var(--series-1-band)',
+  bandAlt: 'var(--series-2-band)',
+  grid: 'var(--grid)',
+  axis: 'var(--rule-strong)',
+} as const

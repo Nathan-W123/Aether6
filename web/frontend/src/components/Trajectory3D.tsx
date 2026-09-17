@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-import { SEMANTIC } from '../lib/palette'
 import type { Series, Waypoint } from '../api/types'
 
 /**
@@ -22,14 +21,20 @@ function bodyAxisToScene(q: THREE.Quaternion, bx: number, by: number, bz: number
   return new THREE.Vector3(ned.y, -ned.z, -ned.x)
 }
 
+/** Resolve one of the sheet's CSS tokens to a Three.js colour. */
+function token(name: string, fallback: string): THREE.Color {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return new THREE.Color(value || fallback)
+}
+
 /** A small delta-wing glyph: nose along +x, canopy along +y, right wing along +z. */
 function buildAircraft(): THREE.Group {
   const group = new THREE.Group()
   const body = new THREE.MeshStandardMaterial({
-    color: 0xd7e2f0, roughness: 0.42, metalness: 0.1,
+    color: token('--ink', '#14191b'), roughness: 0.55, metalness: 0.05,
   })
   const accent = new THREE.MeshStandardMaterial({
-    color: 0x4db6ac, roughness: 0.5, metalness: 0.05,
+    color: token('--oxide', '#a8351b'), roughness: 0.6, metalness: 0.0,
   })
 
   const fuselage = new THREE.Mesh(new THREE.CapsuleGeometry(1.5, 8, 4, 12), body)
@@ -117,8 +122,9 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
     mount.appendChild(renderer.domElement)
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x0c121c)
-    scene.fog = new THREE.Fog(0x0c121c, 900, 3400)
+    const field = token('--field', '#f7f8f5')
+    scene.background = field
+    scene.fog = new THREE.Fog(field, 1100, 3800)
 
     const camera = new THREE.PerspectiveCamera(
       42, mount.clientWidth / Math.max(1, mount.clientHeight), 1, 12000)
@@ -131,14 +137,16 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
     controls.minDistance = 60
     controls.maxDistance = 6000
 
-    scene.add(new THREE.HemisphereLight(0xbfd4ee, 0x141c28, 1.5))
-    const sun = new THREE.DirectionalLight(0xffffff, 1.6)
-    sun.position.set(400, 900, 500)
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa5a3, 2.1))
+    const sun = new THREE.DirectionalLight(0xffffff, 1.5)
+    sun.position.set(500, 950, 420)
     scene.add(sun)
 
-    const grid = new THREE.GridHelper(4000, 40, 0x2c3d57, 0x1c2738)
+    // The ground is plotting paper: a ruled grid, no shading.
+    const grid = new THREE.GridHelper(4000, 40,
+      token('--rule-strong', '#8d9a96'), token('--grid', '#d7ded9'))
     ;(grid.material as THREE.Material).transparent = true
-    ;(grid.material as THREE.Material).opacity = 0.65
+    ;(grid.material as THREE.Material).opacity = 0.9
     scene.add(grid)
 
     const dynamic = new THREE.Group()
@@ -149,7 +157,7 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
 
     const trail = new THREE.Line(
       new THREE.BufferGeometry(),
-      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }),
+      new THREE.LineBasicMaterial({ color: token('--ink', '#14191b') }),
     )
     scene.add(trail)
 
@@ -205,7 +213,7 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
 
     const path = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(track.points),
-      new THREE.LineBasicMaterial({ color: 0x3987e5, transparent: true, opacity: 0.85 }),
+      new THREE.LineBasicMaterial({ color: token('--series-1', '#2a78d6') }),
     )
     dynamic.add(path)
 
@@ -214,7 +222,8 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
     const shadow = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(
         track.points.map((p) => new THREE.Vector3(p.x, 0.5, p.z))),
-      new THREE.LineBasicMaterial({ color: 0x5a6f90, transparent: true, opacity: 0.35 }),
+      new THREE.LineBasicMaterial({
+        color: token('--ink-faint', '#7b8689'), transparent: true, opacity: 0.55 }),
     )
     dynamic.add(shadow)
 
@@ -222,7 +231,7 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
       const estimated = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(track.estimate),
         new THREE.LineDashedMaterial({
-          color: 0xd95926, dashSize: 26, gapSize: 16, transparent: true, opacity: 0.85,
+          color: token('--series-2', '#eb6834'), dashSize: 26, gapSize: 16,
         }),
       )
       estimated.computeLineDistances()
@@ -231,7 +240,7 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
 
     const markerGeometry = new THREE.SphereGeometry(7, 16, 12)
     const markerMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4db6ac, emissive: 0x11403c, roughness: 0.4,
+      color: token('--ink', '#14191b'), roughness: 0.6,
     })
     for (const waypoint of waypoints) {
       const position = toScene(waypoint.north, waypoint.east, waypoint.altitude)
@@ -242,7 +251,8 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
         new THREE.BufferGeometry().setFromPoints([
           position.clone(), new THREE.Vector3(position.x, 0, position.z),
         ]),
-        new THREE.LineBasicMaterial({ color: 0x4db6ac, transparent: true, opacity: 0.3 }),
+        new THREE.LineBasicMaterial({
+          color: token('--ink-mute', '#4e585b'), transparent: true, opacity: 0.45 }),
       )
       dynamic.add(drop)
     }
@@ -320,19 +330,19 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
       <div
         ref={mountRef}
         style={{
-          width: '100%', height, borderRadius: 'var(--radius-sm)', overflow: 'hidden',
-          background: '#0c121c', cursor: 'grab',
+          width: '100%', height, background: 'var(--field)',
+          border: '1px solid var(--rule)', cursor: 'grab',
         }}
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+      <div className="transport">
         <button
           type="button"
-          className="ghost-button"
+          className="action-secondary"
           onClick={() => setPlaying((value) => !value)}
           aria-label={playing ? 'Pause the animation' : 'Play the animation'}
-          style={{ minWidth: 62 }}
+          style={{ minWidth: 76, flex: 'none' }}
         >
-          {playing ? '❚❚ Pause' : '▶ Play'}
+          {playing ? 'Pause' : 'Play'}
         </button>
         <input
           type="range"
@@ -346,40 +356,36 @@ export function Trajectory3D({ series, waypoints, showEstimate, height = 420 }: 
             setFrame(value)
           }}
           aria-label="Scrub through the trajectory"
-          style={{ flex: 1 }}
         />
-        <span className="mono" style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 62,
-                                        textAlign: 'right' }}>
-          t = {currentTime.toFixed(0)} s
-        </span>
-        <div className="segmented" style={{ width: 132, flex: 'none' }}>
+        <span className="clock">t = {currentTime.toFixed(0)} s</span>
+        <div className="switch" style={{ width: 136, flex: 'none' }}>
           {SPEEDS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={speed === value}
-              onClick={() => setSpeed(value)}
-            >
+            <button key={value} type="button" aria-pressed={speed === value}
+                    onClick={() => setSpeed(value)}>
               {value}×
             </button>
           ))}
         </div>
       </div>
-      <div className="legend" style={{ marginTop: 8 }}>
+      <div className="legend" style={{ marginTop: 9, marginBottom: 0 }}>
         <span className="legend-item">
-          <span className="legend-swatch" style={{ background: SEMANTIC.truth }} /> flown path
+          <span className="legend-key" style={{ borderTopColor: 'var(--series-1)' }} />
+          flown path
         </span>
         {showEstimate && (
           <span className="legend-item">
-            <span className="legend-swatch dashed" style={{ color: SEMANTIC.estimate }} />
-            EKF estimate
+            <span className="legend-key" style={{
+              borderTopColor: 'var(--series-2)', borderTopStyle: 'dashed' }} />
+            navigation estimate
           </span>
         )}
         <span className="legend-item">
-          <span className="legend-swatch" style={{ background: '#4db6ac' }} /> waypoints
+          <span className="legend-key" style={{ borderTopColor: 'var(--ink)' }} />
+          waypoints
         </span>
         <span className="legend-item">
-          <span className="legend-swatch" style={{ background: '#5a6f90' }} /> ground track
+          <span className="legend-key" style={{ borderTopColor: 'var(--ink-faint)' }} />
+          ground projection
         </span>
       </div>
     </div>

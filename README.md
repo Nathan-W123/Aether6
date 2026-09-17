@@ -112,10 +112,11 @@ safety limit was tripped and 2 on a configuration error, so it composes with she
 
 ## Interactive dashboard
 
-A single-page dashboard runs the real simulator on demand: pick a scenario or move the
-sliders, press run, and the page shows the flown trajectory in 3D, the ground track, the
-aircraft states and control inputs, truth against the EKF's estimate, an LQR-versus-PID
-comparison and the Monte-Carlo robustness results.
+A single-page flight-test report runs the real simulator on demand: pick a case from the test
+matrix or move the sliders, press run, and the page draws the flown trajectory in 3D, the
+ground track, the aircraft states and control inputs, truth against the EKF's estimate, an
+LQR-versus-PID comparison, the modal analysis and the Monte-Carlo robustness results — nine
+numbered sections and twenty-one numbered figures, laid out as an engineering drawing sheet.
 
 ```bash
 make build        # the C++ simulator

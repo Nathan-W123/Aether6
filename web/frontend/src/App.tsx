@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ComparePanel } from './components/ComparePanel'
-import { ControlPanel } from './components/ControlPanel'
 import { ControlsPanel } from './components/ControlsPanel'
 import { EstimatorPanel } from './components/EstimatorPanel'
 import { GroundTrack } from './components/GroundTrack'
-import { Header } from './components/Header'
+import { Masthead } from './components/Masthead'
 import { ModesPanel } from './components/ModesPanel'
-import { OutcomeBanner } from './components/OutcomeBanner'
 import { MonteCarloPanel } from './components/MonteCarloPanel'
-import { StatTiles } from './components/StatTiles'
+import { OutcomeNotice } from './components/OutcomeNotice'
+import { RunCard } from './components/RunCard'
+import { RunSummary } from './components/RunSummary'
 import { StatesPanel } from './components/StatesPanel'
+import { TitleBlock } from './components/TitleBlock'
 import { Trajectory3D } from './components/Trajectory3D'
 import { TrimPanel } from './components/TrimPanel'
+import { Figure } from './components/sheet/Figure'
+import { Section } from './components/sheet/Section'
 import { api, ApiError } from './api/client'
-import { seconds } from './lib/format'
+import { fixed, seconds } from './lib/format'
 import type {
   Meta, PrecomputedModes, PrecomputedMonteCarlo, SimulationRequest, SimulationResponse,
 } from './api/types'
@@ -34,7 +37,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const inFlight = useRef<AbortController | null>(null)
 
-  // --- boot: fetch the metadata and the precomputed panels, then fly the default preset ---
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -54,7 +56,7 @@ export default function App() {
       } catch (caught) {
         if (!cancelled) {
           setBootError(caught instanceof ApiError
-            ? caught.message : 'Could not load the simulation service.')
+            ? caught.message : 'Could not reach the simulation service.')
         }
       }
     })()
@@ -81,7 +83,7 @@ export default function App() {
     }
   }, [])
 
-  // The page is never empty: the default preset flies as soon as the metadata arrives.
+  // The sheet is never blank: the nominal case flies as soon as the metadata arrives.
   const booted = useRef(false)
   useEffect(() => {
     if (!request || booted.current) return
@@ -104,24 +106,30 @@ export default function App() {
 
   const statusLine = useMemo(() => {
     if (!run) return null
-    const source = run.cached ? 'served from cache' : `${seconds(run.server_runtime_s)} on the server`
-    return `${run.metrics.simulated_time_s.toFixed(0)} s simulated · ${source}`
+    return `${run.metrics.simulated_time_s.toFixed(0)} s simulated · `
+      + (run.cached ? 'served from cache' : `${seconds(run.server_runtime_s)} on the server`)
   }, [run])
 
   if (bootError) {
     return (
-      <div style={{ padding: 48, maxWidth: 640, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 20, marginBottom: 8 }}>Aether-6</h1>
-        <p className="status error">{bootError}</p>
+      <div className="sheet">
+        <header className="masthead">
+          <div className="masthead-rule" />
+          <h1 className="masthead-title">Aether-6</h1>
+        </header>
+        <p className="status is-error" style={{ fontSize: 15 }}>{bootError}</p>
       </div>
     )
   }
 
   if (!meta || !request) {
     return (
-      <div style={{ padding: 48, maxWidth: 1200, margin: '0 auto' }}>
-        <div className="skeleton" style={{ height: 32, width: 220, marginBottom: 18 }} />
-        <div className="skeleton" style={{ height: 380 }} />
+      <div className="sheet">
+        <header className="masthead">
+          <div className="masthead-rule" />
+          <h1 className="masthead-title">Aether-6<br />Flight Test</h1>
+        </header>
+        <div className="placeholder" style={{ height: 420, marginTop: 30 }} />
       </div>
     )
   }
@@ -129,11 +137,12 @@ export default function App() {
   const showEstimate = request.feedback === 'estimate'
 
   return (
-    <>
-      <Header version={meta.version} repositoryUrl={REPOSITORY} />
-      <div className="app">
-        <aside className="sidebar">
-          <ControlPanel
+    <div className="sheet">
+      <Masthead version={meta.version} repositoryUrl={REPOSITORY} run={run} />
+
+      <div className="body-grid">
+        <aside className="rail">
+          <RunCard
             meta={meta}
             request={request}
             activePreset={activePreset}
@@ -146,99 +155,138 @@ export default function App() {
           />
         </aside>
 
-        <main className="main">
+        <main className="column">
           {run ? (
             <>
-              <OutcomeBanner metrics={run.metrics} duration={meta.limits.duration_s} />
-              <StatTiles metrics={run.metrics} trim={run.trim} feedback={request.feedback} />
-
-              <div className="panel">
-                <div className="panel-head">
-                  <h2>Trajectory</h2>
-                  <span className="badge">
-                    {run.request.controller.toUpperCase()} ·{' '}
-                    {run.request.feedback === 'truth' ? 'true states' : 'EKF estimate'} ·{' '}
-                    {run.request.wind_speed.toFixed(1)} m/s wind
-                  </span>
+              <Section
+                number="1"
+                title="Run summary"
+                note={<>The case in the run card, integrated by <code>aether_sim</code> at{' '}
+                  {(1 / meta.limits.dt_s).toFixed(0)} Hz for {meta.limits.duration_s.toFixed(0)}{' '}
+                  seconds of flight. The tracking and estimator statistics are measured over the{' '}
+                  {run.metrics.metrics_window_s > 0
+                    ? `${run.metrics.metrics_window_s.toFixed(0)} s`
+                    : 'window'} that follows a settling period.</>}
+              >
+                <OutcomeNotice metrics={run.metrics} duration={meta.limits.duration_s} />
+                <div style={{ marginTop: run.metrics.completed ? 0 : 20 }}>
+                  <RunSummary metrics={run.metrics} trim={run.trim} feedback={request.feedback} />
                 </div>
-                <p className="panel-note">
-                  Drag to orbit, scroll to zoom. The glyph's attitude is the simulated
-                  quaternion, so the bank into each turn and the pitch on each climb leg are
-                  the vehicle's own.
-                </p>
-                <div className="grid-2">
-                  <Trajectory3D
-                    series={run.series}
-                    waypoints={run.waypoints}
-                    showEstimate={showEstimate}
-                    height={420}
-                  />
-                  <GroundTrack
-                    series={run.series}
-                    waypoints={run.waypoints}
-                    showEstimate={showEstimate}
-                    height={420}
-                  />
+              </Section>
+
+              <Section
+                number="2"
+                title="Trajectory"
+                note={<>The flown path against the commanded circuit. The glyph's attitude is
+                  the logged quaternion, so the bank into each turn and the pitch on each climb
+                  leg are the vehicle's own. Drag to orbit, scroll to zoom.</>}
+              >
+                <div className="figure-row">
+                  <Figure number="1" bare caption={<>Flight path in three dimensions, with the
+                    ground projection beneath it and the six waypoints marked.</>}>
+                    <Trajectory3D
+                      series={run.series}
+                      waypoints={run.waypoints}
+                      showEstimate={showEstimate}
+                      height={392}
+                    />
+                  </Figure>
+                  <Figure number="2" bare caption={<>Plan view, equal scale on both axes.
+                    Cross-track RMS <b>{fixed(run.metrics.rms_cross_track_m, 1)} m</b> against a
+                    circuit {fixed(1.2, 1)} km across.</>}>
+                    <GroundTrack
+                      series={run.series}
+                      waypoints={run.waypoints}
+                      showEstimate={showEstimate}
+                      height={392}
+                    />
+                  </Figure>
                 </div>
-              </div>
+              </Section>
 
-              <StatesPanel series={run.series} />
-              <ControlsPanel series={run.series} />
-              <EstimatorPanel series={run.series} metrics={run.metrics} inLoop={showEstimate} />
+              <Section
+                number="3"
+                title="Vehicle states"
+                note="Truth from the integrator, not the filter's view of it. Dashed traces are
+                      the guidance commands the inner loops are tracking."
+              >
+                <StatesPanel series={run.series} />
+              </Section>
 
-              <div className="grid-2" style={{ alignItems: 'start' }}>
-                <TrimPanel
-                  trim={run.trim}
-                  request={run.request}
-                  serverRuntime={run.server_runtime_s}
-                  cached={run.cached}
-                />
-                <div className="panel">
-                  <div className="panel-head"><h2>How this page works</h2></div>
-                  <p className="panel-note" style={{ marginBottom: 10 }}>
-                    Each run generates a scenario from the validated slider values, executes the
-                    compiled <code>aether_sim</code> binary in a fresh temporary directory under a
-                    wall-clock limit, parses its CSV and JSON output, deletes the directory and
-                    returns the series you see. No text you type reaches a shell, a filename or a
-                    configuration file.
+              <Section
+                number="4"
+                title="Control activity"
+                note="Actuator states after the first-order servo models and the position and
+                      rate limits, so these are the deflections the aerodynamics received."
+              >
+                <ControlsPanel series={run.series} />
+              </Section>
+
+              <Section
+                number="5"
+                title="Navigation"
+                note={<>An 18-state error-state EKF on a 200 Hz IMU, 5 Hz GNSS, 20 Hz barometer,
+                  50 Hz magnetometer and 50 Hz pitot, estimating position, velocity, attitude,
+                  both IMU biases, the horizontal wind and the barometer bias.{' '}
+                  {showEstimate
+                    ? 'The control law is closed on this estimate, so its errors are inside the loop.'
+                    : 'The filter is running but the control law is flying on true states, which separates estimation error from control error.'}</>}
+              >
+                <EstimatorPanel series={run.series} />
+              </Section>
+
+              <Section
+                number="6"
+                title="Trim and control law"
+                note="A damped Levenberg–Marquardt solve for the state and actuator settings
+                      that make every body-frame acceleration vanish, with one-sided penalties
+                      keeping the answer inside the actuator box."
+              >
+                <TrimPanel trim={run.trim} request={run.request} />
+                <div style={{ marginTop: 30 }}>
+                  <p className="label" style={{ marginBottom: 12 }}>
+                    Servo-LQR against classical PID
                   </p>
-                  <div className="table-scroll">
-                    <table className="data">
-                      <tbody>
-                        <tr><td>Simulated duration</td><td>{meta.limits.duration_s.toFixed(0)} s</td></tr>
-                        <tr><td>Integrator step</td><td>{(meta.limits.dt_s * 1000).toFixed(0)} ms (RK4)</td></tr>
-                        <tr><td>Control rate</td><td>100 Hz</td></tr>
-                        <tr><td>Samples returned</td><td>{meta.limits.series_points}</td></tr>
-                        <tr><td>Concurrent runs allowed</td><td>{meta.limits.max_concurrency}</td></tr>
-                        <tr><td>Run time limit</td><td>{meta.limits.simulate_timeout_s.toFixed(0)} s</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  <ComparePanel request={request} seeded={run} />
                 </div>
-              </div>
-
-              <ComparePanel request={request} seeded={run} />
+              </Section>
             </>
           ) : (
-            <div className="panel">
-              <div className="skeleton" style={{ height: 420 }} />
-            </div>
+            <div className="placeholder" style={{ height: 480 }} />
+          )}
+
+          {modes?.available && (
+            <Section
+              number="7"
+              title="Linearised dynamics"
+              note="A 12×12 Jacobian taken by central differences in the quaternion tangent
+                    space about the reference trim, split into longitudinal and
+                    lateral-directional blocks and classified by eigenvalue."
+              aside={<span className="label">Bundled · reference trim</span>}
+            >
+              <ModesPanel data={modes} />
+            </Section>
           )}
 
           {campaign?.available && (
-            <MonteCarloPanel meta={meta} campaign={campaign} request={request} />
+            <Section
+              number="8"
+              title="Robustness"
+              note={<>Mass and inertia ±8–12%, lift-curve and moment slopes ±12%, thrust ±8%,
+                attitude and altitude offsets, wind and turbulence draws and a sensor-quality
+                multiplier. Each trial is reseeded deterministically from one master seed, so
+                the campaign reproduces exactly.</>}
+              aside={<span className="label">Bundled · {campaign.trials} trials</span>}
+            >
+              <MonteCarloPanel meta={meta} campaign={campaign} request={request} />
+            </Section>
           )}
-          {modes?.available && <ModesPanel data={modes} />}
 
-          <footer style={{ color: 'var(--text-dim)', fontSize: 12, padding: '4px 2px 0' }}>
-            Aether-6 uses a synthetic small-UAV parameter set, representative of the class but
-            not identified from flight test. See{' '}
-            <a href={`${REPOSITORY}/blob/main/docs/limitations.md`} target="_blank"
-               rel="noreferrer noopener">docs/limitations.md</a>{' '}
-            for what that does and does not support.
-          </footer>
+          <Section number="9" title="Reproduction">
+            <TitleBlock meta={meta} run={run} repositoryUrl={REPOSITORY} />
+          </Section>
         </main>
       </div>
-    </>
+    </div>
   )
 }
