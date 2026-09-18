@@ -31,6 +31,17 @@ venv/
 .ipynb_checkpoints/
 
 # ---------------------------------------------------------------------------------------
+# Shareable renders.
+#
+# The stills are committed, as the figures are. The video is not: 17 MB of regenerable binary
+# against a repository whose whole history is 18 MB. `make plate` rebuilds all of it.
+# ---------------------------------------------------------------------------------------
+media/plate/node_modules/
+
+results/media/*.mp4
+results/media/*.gif
+
+# ---------------------------------------------------------------------------------------
 # Web dashboard
 #
 # The lockfile is committed so `npm ci` and the Docker build are reproducible; the installed

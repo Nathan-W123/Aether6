@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Aether-6 figures</title>
+    <style>
+      @font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-display: block;
+        src: url('fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2'); }
+      @font-face { font-family: 'IBM Plex Sans Condensed'; font-weight: 500; font-display: block;
+        src: url('fonts/ibm-plex-sans-condensed-latin-500-normal.woff2') format('woff2'); }
+      @font-face { font-family: 'IBM Plex Sans Condensed'; font-weight: 600; font-display: block;
+        src: url('fonts/ibm-plex-sans-condensed-latin-600-normal.woff2') format('woff2'); }
+      html, body { margin: 0; background: #eceee9; overflow: hidden; }
+      canvas { display: block; width: 2048px; height: 2048px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="fig" width="2048" height="2048"></canvas>
+    <script src="figures-data.js"></script>
+    <script type="module">
+      await document.fonts.load('600 19px "IBM Plex Sans Condensed"')
+      await document.fonts.load('400 16px "IBM Plex Mono"')
+      await document.fonts.ready
+      const { drawTracks, drawModes } = await import('./figures.js')
+      const g = document.getElementById('fig').getContext('2d')
+      window.draw = (which) => {
+        g.clearRect(0, 0, 2048, 2048)
+        if (which === 'tracks') drawTracks(g)
+        else drawModes(g)
+      }
+      window.READY = true
+    </script>
+  </body>
+</html>

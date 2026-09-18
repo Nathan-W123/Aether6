@@ -1,0 +1,10 @@
+{
+  "name": "aether6-plate",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Headless renderer for the Aether-6 shareable plate and figures",
+  "devDependencies": {
+    "playwright-core": "1.56.1"
+  }
+}

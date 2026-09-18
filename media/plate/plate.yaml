@@ -1,0 +1,146 @@
+name: dashboard
+aircraft: ../../configs/aircraft/aether6_uav.yaml
+duration: 400.0
+control_rate: 100.0
+seed: 20240917
+integration:
+  integrator: rk4
+  dt: 0.004
+initial:
+  from_trim: true
+  airspeed: 26.0
+  altitude: 130.0
+  north: 0.0
+  east: 0.0
+  heading_deg: 0.0
+  flight_path_angle_deg: 0.0
+environment:
+  density_scale: 1.0
+  wind:
+    steady_ned:
+    - 4.2
+    - -5.6
+    - 0.0
+    enable_shear: true
+    shear_reference_altitude: 130.0
+    shear_roughness: 0.05
+    enable_turbulence: true
+    altitude_scaled: true
+    w20: 9.8
+control:
+  type: lqr
+  feedback: estimate
+  lqr:
+    limits:
+      max_bank_deg: 35.0
+      max_pitch_deg: 20.0
+      max_climb_rate: 4.0
+      integrator_authority: 0.25
+      protection_enabled: true
+      alpha_max_deg: 13.8
+      alpha_protection_gain: 2.5
+      alpha_protection_rate_gain: 0.35
+      alpha_protection_blend_deg: 5.0
+guidance:
+  terminal: loop
+  path_gain: 0.035
+  chi_infinity_deg: 60.0
+  capture_radius: 45.0
+  use_half_plane_switching: true
+  waypoints:
+  - north: 0.0
+    east: 0.0
+    altitude: 130.0
+    airspeed: 26.0
+  - north: 600.0
+    east: 0.0
+    altitude: 160.0
+    airspeed: 26.0
+  - north: 900.0
+    east: 500.0
+    altitude: 160.0
+    airspeed: 28.08
+  - north: 600.0
+    east: 900.0
+    altitude: 120.0
+    airspeed: 26.0
+  - north: 0.0
+    east: 900.0
+    altitude: 120.0
+    airspeed: 23.92
+  - north: -300.0
+    east: 450.0
+    altitude: 140.0
+    airspeed: 26.0
+sensors:
+  enable_gps: true
+  imu:
+    rate: 200.0
+    gyro_noise: 0.0035
+    accel_noise: 0.05
+    gyro_bias_initial: 0.01
+    accel_bias_initial: 0.08
+    gyro_bias_walk: 0.0003
+    accel_bias_walk: 0.003
+  gps:
+    rate: 5.0
+    position_noise_ne: 1.2
+    position_noise_d: 2.5
+    velocity_noise: 0.15
+    slow_error_sigma: 1.5
+    slow_error_tau: 300.0
+  baro:
+    rate: 20.0
+    noise: 0.6
+    bias_sigma: 2.0
+  magnetometer:
+    rate: 50.0
+    field_strength: 5.0e-05
+    inclination_deg: 65.0
+    declination_deg: 11.0
+    noise: 4.0e-07
+    bias_sigma: 6.0e-07
+  airspeed:
+    rate: 50.0
+    noise: 0.35
+    bias_sigma: 0.25
+estimator:
+  gyro_noise: 0.0045
+  accel_noise: 0.07
+  gyro_bias_walk: 0.0005
+  accel_bias_walk: 0.04
+  wind_walk: 0.05
+  baro_bias_walk: 0.01
+  gps_position_ne: 2.2
+  gps_position_d: 3.5
+  gps_velocity: 0.25
+  baro_noise: 1.5
+  mag_noise: 8.0e-07
+  airspeed_noise: 0.6
+  init_position_sigma: 5.0
+  init_velocity_sigma: 1.0
+  init_attitude_sigma_deg: 5.0
+  init_gyro_bias_sigma: 0.02
+  init_accel_bias_sigma: 0.2
+  init_wind_sigma: 6.0
+  init_baro_bias_sigma: 3.0
+  exact_discretisation: false
+  innovation_gate: 25.0
+  use_baro: true
+  use_magnetometer: true
+  use_airspeed: true
+  initialise_wind_from_airspeed: true
+logging:
+  output_dir: build/plate
+  decimation: 10
+  enabled: true
+  log_sensors: false
+  log_estimator: true
+safety:
+  ground_altitude: 0.0
+  max_altitude: 3000.0
+  min_airspeed: 8.0
+  max_airspeed: 60.0
+  max_bank_deg: 80.0
+  max_pitch_deg: 75.0
+  stop_on_ground_contact: true

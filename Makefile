@@ -15,6 +15,8 @@
 #   make dashboard-dev run the API and the Vite dev server together (hot reload)
 #   make dashboard-test run the FastAPI service's test suite
 #
+#   make plate         render the shareable animation and stills (see media/plate)
+#
 #   make clean         remove the build directory
 #   make clean-results remove generated results (keeps the committed figures)
 # =============================================================================================
@@ -35,7 +37,7 @@ DASHBOARD_PORT ?= 8000
 
 .PHONY: all configure build test ctest run run-scenarios trim monte-carlo integrators \
         figures run-all clean clean-results help \
-        dashboard dashboard-build dashboard-dev dashboard-test
+        dashboard dashboard-build dashboard-dev dashboard-test plate
 
 all: build
 
@@ -99,6 +101,10 @@ dashboard: build dashboard-build
 dashboard-dev: build $(FRONTEND_DIR)/node_modules
 	PYTHONPATH=$(BACKEND_DIR) $(PYTHON) -m uvicorn app.main:app --reload --port 8000 & \
 	  cd $(FRONTEND_DIR) && npm run dev; kill %1
+
+# The shareable render. Slow: it captures 660 frames through a software renderer.
+plate: build $(FRONTEND_DIR)/node_modules
+	media/plate/build.sh
 
 dashboard-test: build
 	cd $(BACKEND_DIR) && $(PYTHON) -m pytest -q
